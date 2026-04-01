@@ -100,6 +100,12 @@ async function _fetchGmailAttachments(messageId) {
   const qualifying = attachParts.filter(p => {
     const mt = (p.mimeType || '').toLowerCase();
     const fn = (p.filename || '').toLowerCase();
+    // Skip inline images (email signatures, logos) — only keep real attachments
+    const headers = p.headers || [];
+    const disposition = headers.find(h => h.name.toLowerCase() === 'content-disposition');
+    const contentId = headers.find(h => h.name.toLowerCase() === 'content-id');
+    if (disposition && disposition.value.toLowerCase().startsWith('inline')) return false;
+    if (contentId && mt.startsWith('image/')) return false; // inline embedded image
     return mt === 'application/pdf'
       || mt.startsWith('image/')
       || (mt === 'application/octet-stream' && fn.endsWith('.pdf'));

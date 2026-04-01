@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
       googleCalendars = result.calendars;
       renderFooterSignedIn(googleAccount);
       const stored = await new Promise(r => chrome.storage.local.get('google_last_calendar', r));
-      renderCalendarPicker(googleCalendars, stored.google_last_calendar || null);
+      await renderCalendarPicker(googleCalendars, stored.google_last_calendar || null);
     });
   });
 
@@ -112,12 +112,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Restore Google sign-in state
-  chrome.storage.local.get(['google_account', 'google_calendars', 'google_last_calendar'], (r) => {
+  chrome.storage.local.get(['google_account', 'google_calendars', 'google_last_calendar'], async (r) => {
     if (r.google_account) {
       googleAccount = r.google_account;
       googleCalendars = r.google_calendars || [];
       renderFooterSignedIn(googleAccount);
-      renderCalendarPicker(googleCalendars, r.google_last_calendar || null);
+      await renderCalendarPicker(googleCalendars, r.google_last_calendar || null);
     } else {
       renderFooterSignedOut();
     }

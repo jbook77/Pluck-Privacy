@@ -245,7 +245,7 @@
 .cal-picker-btn { display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--accent); border-radius:6px; padding:7px 10px; cursor:pointer; width:100%; color:var(--fg); font-size:12px; }
 .cal-picker-selected { display:flex; align-items:center; gap:8px; }
 .cal-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.cal-picker-dropdown { position:absolute; top:calc(100% + 2px); left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:6px; z-index:100; overflow:hidden; display:none; }
+.cal-picker-dropdown { position:absolute; bottom:calc(100% + 2px); left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:6px; z-index:100; overflow:hidden; display:none; }
 .cal-picker-dropdown.open { display:block; }
 .cal-picker-item { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; font-size:12px; color:var(--fg); }
 .cal-picker-item:hover { background:var(--hover); }
@@ -292,6 +292,7 @@
     <input type="password" id="api-key-input" placeholder="Paste your Gemini API key..." />
     <button class="api-save-btn" id="save-key-btn">Save</button>
   </div>
+  <button id="change-key-btn" style="display:none">Change API key</button>
 
   <div class="url-row">
     <input type="text" id="url-input" placeholder="Paste a PDF link from email..." />

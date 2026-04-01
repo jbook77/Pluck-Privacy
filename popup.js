@@ -148,18 +148,22 @@ function renderFooterSignedIn(account) {
   document.getElementById('account-email').textContent = account.email || '';
 }
 
-function renderCalendarPicker(calendars, selectedId) {
+async function renderCalendarPicker(calendars, selectedId) {
   const row = document.getElementById('cal-picker-row');
   if (!calendars || !calendars.length) { row.style.display = 'none'; return; }
+
+  const hiddenIds = await getHiddenCalendars();
+  const visible = calendars.filter(c => !hiddenIds.includes(c.id));
+  if (!visible.length) { row.style.display = 'none'; return; }
   row.style.display = '';
 
-  const sel = calendars.find(c => c.id === selectedId) || calendars[0];
+  const sel = visible.find(c => c.id === selectedId) || visible[0];
   selectedCalendarId = sel.id;
   document.getElementById('cal-picker-dot').style.background = sel.color;
   document.getElementById('cal-picker-name').textContent = sel.name;
 
   const dd = document.getElementById('cal-picker-dropdown');
-  dd.innerHTML = calendars.map(c =>
+  dd.innerHTML = visible.map(c =>
     '<div class="cal-picker-item' + (c.id === sel.id ? ' active' : '') + '" data-id="' + escAttr(c.id) + '" data-name="' + escAttr(c.name) + '" data-color="' + escAttr(c.color) + '">'
     + '<span class="cal-dot" style="background:' + escAttr(c.color) + '"></span>'
     + escHtml(c.name)
@@ -188,7 +192,9 @@ function hideCalendarPicker() {
 async function tryAutoSelectCalendar(events) {
   if (!googleAccount || !googleCalendars.length) return;
   const aliases = await getAliases();
-  const matchedId = autoSelectCalendar(events, googleCalendars, aliases);
+  const hiddenIds = await getHiddenCalendars();
+  const visibleCalendars = googleCalendars.filter(c => !hiddenIds.includes(c.id));
+  const matchedId = autoSelectCalendar(events, visibleCalendars, aliases);
   if (matchedId) {
     selectedCalendarId = matchedId;
     const cal = googleCalendars.find(c => c.id === matchedId);

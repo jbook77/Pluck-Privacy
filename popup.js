@@ -272,7 +272,24 @@ function renderAliasCard(cal, calAliases, hiddenIds) {
     + '</div>';
 }
 
-function wireAliasEvents(aliases) {
+function wireAliasEvents(aliases, hiddenIds) {
+  // Visibility toggle
+  document.querySelectorAll('.cal-vis-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const calId = btn.getAttribute('data-cal');
+      const current = await getHiddenCalendars();
+      let updated;
+      if (current.includes(calId)) {
+        updated = current.filter(id => id !== calId);
+      } else {
+        updated = [...current, calId];
+      }
+      await chrome.storage.local.set({ google_hidden_calendars: updated });
+      renderSettingsBody();
+      renderCalendarPicker(googleCalendars, selectedCalendarId);
+    });
+  });
+
   // Remove alias
   document.querySelectorAll('.alias-tag-remove').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -283,8 +300,9 @@ function wireAliasEvents(aliases) {
       await saveAliases(current);
       Object.assign(aliases, current);
       const cal = googleCalendars.find(c => c.id === calId);
-      document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId]);
-      wireAliasEvents(current);
+      const hids = await getHiddenCalendars();
+      document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId], hids);
+      wireAliasEvents(current, hids);
     });
   });
 
@@ -318,8 +336,9 @@ async function confirmAddAlias(calId, aliases) {
   await saveAliases(current);
   Object.assign(aliases, current);
   const cal = googleCalendars.find(c => c.id === calId);
-  document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId]);
-  wireAliasEvents(current);
+  const hids = await getHiddenCalendars();
+  document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId], hids);
+  wireAliasEvents(current, hids);
 }
 
 // ─── API key ──────────────────────────────────────────────────────────────────

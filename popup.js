@@ -532,7 +532,7 @@ function renderTravelCards(events) {
   const flightSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
   const hotelSVG  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
   let html = '<div class="results-label">' + events.length + ' event' + (events.length > 1 ? 's' : '') + ' found</div>';
-  events.forEach(ev => {
+  events.forEach((ev, i) => {
     const hotel = ev.type === 'hotel';
     const s = ev.startISO, e2 = ev.endISO;
     const details = buildTravelDetails(ev);
@@ -544,10 +544,68 @@ function renderTravelCards(events) {
       + '<div class="field-row"><span class="field-label">Ends</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
       + (ev.location ? '<div class="field-row"><span class="field-label">Route</span><span class="field-val">' + escHtml(ev.location) + '</span></div>' : '')
       + (ev.passengers && ev.passengers.length ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + ev.passengers.length + '</span></div>' : '')
-      + '<a class="cal-btn" href="' + gcalUrl(ev.title, s, e2, ev.location, details) + '" target="_blank">' + calSVG + ' Add to Google Calendar</a>'
+      + '<button class="cal-btn travel-cal-btn" data-i="' + i + '">' + calSVG + ' Add to Google Calendar</button>'
       + '</div>';
   });
   showResult(html);
+  document.querySelectorAll('.travel-cal-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.getAttribute('data-i'));
+      const ev = events[idx];
+      await addTravelEventToCalendar(ev);
+    });
+  });
+}
+
+async function addTravelEventToCalendar(ev) {
+  const s = ev.startISO, e2 = ev.endISO;
+  const details = buildTravelDetails(ev);
+
+  // If not signed in or no source file — URL fallback
+  if (!googleAccount || ev.sourceFileIdx === undefined) {
+    chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false });
+    return;
+  }
+
+  setStatus('Uploading file...', 'loading');
+  let token;
+  try {
+    token = await getAuthToken();
+  } catch(e) {
+    setStatus('', '');
+    chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false });
+    return;
+  }
+
+  let fileId;
+  try {
+    fileId = await uploadToDrive(token, loadedFiles[ev.sourceFileIdx]);
+  } catch(e) {
+    setStatus('', '');
+    const btn = document.querySelector('[data-i="' + ev.sourceFileIdx + '"].travel-cal-btn');
+    if (btn) {
+      const wrap = document.createElement('div');
+      wrap.className = 'warn-box';
+      wrap.style.marginTop = '6px';
+      wrap.innerHTML = 'Upload failed. <button class="text-btn" id="tv-retry">Retry</button> or <button class="text-btn" id="tv-skip">add without attachment</button>';
+      btn.parentNode.insertBefore(wrap, btn.nextSibling);
+      document.getElementById('tv-retry').addEventListener('click', () => { wrap.remove(); addTravelEventToCalendar(ev); });
+      document.getElementById('tv-skip').addEventListener('click', () => { wrap.remove(); chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false }); });
+    }
+    return;
+  }
+
+  setStatus('Creating event...', 'loading');
+  try {
+    const created = await createCalendarEvent(token, selectedCalendarId, {
+      title: ev.title, startISO: s, endISO: e2, location: ev.location || '', notes: details
+    }, [fileId]);
+    setStatus('', '');
+    chrome.tabs.create({ url: created.htmlLink, active: false });
+  } catch(e) {
+    setStatus('', '');
+    showResult('<div class="error-box">Calendar error: ' + escHtml(e.message) + '</div>');
+  }
 }
 
 // ─── Render: detected event cards ─────────────────────────────────────────────

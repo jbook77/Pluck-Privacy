@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Travel & Events Shortcut",
+  "background": { "service_worker": "background.js" },
   "version": "1.1",
   "description": "Drop files, paste, or scan the page to add travel and events to Google Calendar.",
   "action": {
@@ -15,14 +16,17 @@
     "storage",
     "activeTab",
     "scripting",
-    "identity"
+    "identity",
+    "unlimitedStorage"
   ],
   "oauth2": {
     "client_id": "878539397386-5n64v3lruspp40tc3afgt3n98tgihkg0.apps.googleusercontent.com",
     "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/calendar.events",
-      "https://www.googleapis.com/auth/calendar.readonly"
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/gmail.readonly"
     ]
   },
   "host_permissions": [

@@ -19,10 +19,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function _doSignIn() {
-  // Clear any cached token so Chrome re-issues with all current manifest scopes
+  // Fully revoke old token at Google's end so Chrome re-prompts with all current scopes
   try {
     const old = await _getToken(false).catch(() => null);
-    if (old) await new Promise(r => chrome.identity.removeCachedAuthToken({ token: old }, r));
+    if (old) {
+      await fetch('https://accounts.google.com/o/oauth2/revoke?token=' + old);
+      await new Promise(r => chrome.identity.removeCachedAuthToken({ token: old }, r));
+    }
   } catch(e) { /* no cached token, fine */ }
   const token = await _getToken(true);
   const userInfo = await _fetchUserInfo(token);

@@ -45,6 +45,7 @@ async function _fetchUserInfo(token) {
 }
 
 async function _fetchGmailAttachments(messageId) {
+  if (!messageId) throw new Error('No message ID provided');
   const token = await _getToken(false);
 
   // Fetch full message payload

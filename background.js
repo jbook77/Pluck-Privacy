@@ -19,6 +19,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function _doSignIn() {
+  // Clear any cached token so Chrome re-issues with all current manifest scopes
+  try {
+    const old = await _getToken(false).catch(() => null);
+    if (old) await new Promise(r => chrome.identity.removeCachedAuthToken({ token: old }, r));
+  } catch(e) { /* no cached token, fine */ }
   const token = await _getToken(true);
   const userInfo = await _fetchUserInfo(token);
   const calendars = await _fetchCalendarList(token);

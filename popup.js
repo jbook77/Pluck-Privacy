@@ -236,11 +236,16 @@ async function renderSettingsBody() {
   wireAliasEvents(aliases);
 }
 
-function renderAliasCard(cal, calAliases) {
-  return '<div class="alias-cal-card" id="alias-card-' + escAttr(cal.id) + '">'
+function renderAliasCard(cal, calAliases, hiddenIds) {
+  const isHidden = hiddenIds.includes(cal.id);
+  const toggleStyle = isHidden ? 'background:#444' : 'background:' + cal.color;
+  return '<div class="alias-cal-card' + (isHidden ? ' hidden' : '') + '" id="alias-card-' + escAttr(cal.id) + '">'
+    + '<div class="alias-cal-header">'
     + '<div class="alias-cal-name">'
     + '<span class="cal-dot" style="background:' + escAttr(cal.color) + '"></span>'
     + escHtml(cal.name)
+    + '</div>'
+    + '<button class="cal-vis-toggle ' + (isHidden ? 'off' : 'on') + '" style="' + toggleStyle + '" data-cal="' + escAttr(cal.id) + '" title="' + (isHidden ? 'Show in picker' : 'Hide from picker') + '"></button>'
     + '</div>'
     + '<div class="alias-tags" id="alias-tags-' + escAttr(cal.id) + '">'
     + calAliases.map((a, i) =>

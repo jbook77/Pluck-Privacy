@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Travel &amp; Events Shortcut</title>
+  <style>
+    /* ── Theme variables ───────────────────────────────────────────────── */
+    :root, [data-theme="dark"] {
+      --bg:           #1e1e1e;
+      --bg2:          #282828;
+      --bg3:          #313131;
+      --border:       #404040;
+      --border2:      #4a4a4a;
+      --text:         #f0f0f0;
+      --text2:        #c0c0c0;
+      --text3:        #888;
+      --text4:        #5a5a5a;
+      --btn-primary-bg:  #f0f0f0;
+      --btn-primary-txt: #111;
+      --btn-scan-bg:     transparent;
+      --btn-scan-txt:    #909090;
+      --btn-scan-border: #404040;
+      --btn-scan-hover:  #313131;
+      --btn-scan-hover-txt: #c0c0c0;
+      --tag-flight-bg:  #0e2040; --tag-flight-txt: #5aabf7;
+      --tag-hotel-bg:   #0d1f17; --tag-hotel-txt:  #3ecf8e;
+      --card-bg:        #242424;
+      --card-border:    #333;
+      --err-bg: #1f0e0e; --err-border: #5a2020; --err-txt: #f87171;
+      --warn-bg: #1e1800; --warn-border: #564200; --warn-txt: #f0c040;
+      --info-bg: #0e1a2a; --info-border: #1e3a5a; --info-txt: #5aabf7;
+      --hint-txt: #4a4a4a;
+      --footer-txt: #444;
+      --header-border: #333;
+      --divider: #2e2e2e;
+      --type-dinner-bg: #2a1a00; --type-dinner-txt: #f0a040;
+      --type-meeting-bg: #0e2040; --type-meeting-txt: #5aabf7;
+      --type-appt-bg: #1a0d2e; --type-appt-txt: #a07cf0;
+      --type-event-bg: #1a0018; --type-event-txt: #e060d0;
+      --type-other-bg: #2e2e2e; --type-other-txt: #888;
+      --add-cal-bg: #3ecf8e; --add-cal-txt: #0a1f13;
+    }
+
+    [data-theme="light"] {
+      --bg:           #deeeff;
+      --bg2:          #cce0f5;
+      --bg3:          #bdd4ec;
+      --border:       #a8c4de;
+      --border2:      #90afc8;
+      --text:         #0d1f30;
+      --text2:        #234;
+      --text3:        #4a6a88;
+      --text4:        #7a9ab8;
+      --btn-primary-bg:  #1a5fa8;
+      --btn-primary-txt: #fff;
+      --btn-scan-bg:     transparent;
+      --btn-scan-txt:    #3a6a98;
+      --btn-scan-border: #a8c4de;
+      --btn-scan-hover:  #cce0f5;
+      --btn-scan-hover-txt: #1a5fa8;
+      --tag-flight-bg:  #c8dff5; --tag-flight-txt: #1a5fa8;
+      --tag-hotel-bg:   #c2f0e0; --tag-hotel-txt:  #0d6644;
+      --card-bg:        #eef6ff;
+      --card-border:    #b8d4ee;
+      --err-bg: #fdecea; --err-border: #f5b8b8; --err-txt: #c0392b;
+      --warn-bg: #fff8e1; --warn-border: #ffd54f; --warn-txt: #7a5900;
+      --info-bg: #e8f4fd; --info-border: #a8d4f0; --info-txt: #1a5fa8;
+      --hint-txt: #90afc8;
+      --footer-txt: #90afc8;
+      --header-border: #b8d4ee;
+      --divider: #b8d4ee;
+      --type-dinner-bg: #fff0d0; --type-dinner-txt: #8a4e00;
+      --type-meeting-bg: #daeeff; --type-meeting-txt: #1a5fa8;
+      --type-appt-bg: #ede8ff; --type-appt-txt: #5a2ea8;
+      --type-event-bg: #fce8ff; --type-event-txt: #8a0aa0;
+      --type-other-bg: #e8eef4; --type-other-txt: #4a6a88;
+      --add-cal-bg: #1a5fa8; --add-cal-txt: #fff;
+    }
+
+    /* ── Reset & base ──────────────────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 440px; min-height: 200px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; color: var(--text); background: var(--bg); padding: 20px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--header-border); }
+    .header-icon { width: 32px; height: 32px; background: var(--btn-primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .header-icon svg { stroke: var(--btn-primary-txt); }
+    .header-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .header-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+    /* ── API row ───────────────────────────────────────────────────────── */
+    .api-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .api-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; font-family: monospace; color: var(--text); background: var(--bg2); outline: none; }
+    .api-row input:focus { border-color: var(--border2); }
+    .api-save-btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; color: var(--text); }
+    .api-save-btn:hover { background: var(--bg3); }
+
+    /* ── URL row ───────────────────────────────────────────────────────── */
+    .url-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .url-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; color: var(--text); background: var(--bg2); outline: none; }
+    .url-row input::placeholder { color: var(--text4); }
+    .url-row input:focus { border-color: var(--border2); }
+    .url-btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; color: var(--text2); }
+    .url-btn:hover { background: var(--bg3); }
+
+    /* ── Divider ───────────────────────────────────────────────────────── */
+    .or-divider { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--divider); }
+    .or-divider span { font-size: 11px; color: var(--text4); }
+
+    /* ── Drop zone ─────────────────────────────────────────────────────── */
+    .drop-zone { border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px 16px; text-align: center; transition: background 0.15s, border-color 0.15s; cursor: pointer; }
+    .drop-zone.drag-over { background: var(--bg3); border-color: #5aabf7; }
+    .drop-zone.has-files { border-color: #3ecf8e; border-style: solid; }
+    .drop-zone.paste-flash { border-color: #5aabf7; border-style: solid; animation: pulse 0.4s ease-out; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(90,171,247,0.35); } 100% { box-shadow: 0 0 0 8px rgba(90,171,247,0); } }
+    .upload-icon { margin-bottom: 8px; color: var(--text4); transition: color 0.15s; }
+    .drop-zone.has-files .upload-icon { color: #3ecf8e; }
+    .upload-label { font-size: 13px; color: var(--text3); }
+    .upload-sublabel { font-size: 11px; color: var(--text4); margin-top: 5px; }
+    #file-input { display: none; }
+    .browse-btn { display: inline-block; margin-top: 12px; padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+    .browse-btn:hover { background: var(--bg3); }
+
+    /* ── File list ─────────────────────────────────────────────────────── */
+    .file-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .file-item { display: flex; align-items: center; gap: 6px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+    .file-item-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-item img { max-height: 40px; max-width: 60px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+    .file-remove { background: none; border: none; color: var(--text4); cursor: pointer; font-size: 11px; padding: 0 2px; flex-shrink: 0; }
+    .file-remove:hover { color: #f87171; }
+
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .btn-primary { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: var(--btn-primary-bg); color: var(--btn-primary-txt); border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; margin-top: 10px; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    .btn-scan { width: 100%; padding: 10px; font-size: 13px; font-weight: 500; background: var(--btn-scan-bg); color: var(--btn-scan-txt); border: 1px solid var(--btn-scan-border); border-radius: 8px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .btn-scan:hover { background: var(--btn-scan-hover); color: var(--btn-scan-hover-txt); border-color: var(--border2); }
+    .btn-scan:disabled { opacity: 0.3; cursor: not-allowed; }
+    .scan-hint { font-size: 11px; color: var(--hint-txt); text-align: center; margin-top: 5px; }
+
+    /* ── Status ────────────────────────────────────────────────────────── */
+    #status { font-size: 12px; color: var(--text3); margin-top: 10px; min-height: 18px; display: flex; align-items: center; gap: 6px; }
+    .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--text3); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Message boxes ─────────────────────────────────────────────────── */
+    .error-box { background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--err-txt); margin-top: 10px; line-height: 1.6; }
+    .warn-box  { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--warn-txt); margin-top: 10px; line-height: 1.7; }
+    .warn-box strong  { font-weight: 600; display: block; margin-bottom: 3px; }
+    .info-box  { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--info-txt); margin-top: 10px; line-height: 1.7; }
+    .info-box strong  { font-weight: 600; display: block; margin-bottom: 3px; }
+
+    /* ── Results label ─────────────────────────────────────────────────── */
+    .results-label { font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
+
+    /* ── Travel event cards ────────────────────────────────────────────── */
+    .event-card { border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; background: var(--card-bg); }
+    .event-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .event-icon { color: var(--text3); display: flex; align-items: center; flex-shrink: 0; }
+    .event-title { font-weight: 600; font-size: 13px; flex: 1; line-height: 1.3; color: var(--text); }
+    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+    .tag-flight { background: var(--tag-flight-bg); color: var(--tag-flight-txt); }
+    .tag-hotel  { background: var(--tag-hotel-bg);  color: var(--tag-hotel-txt); }
+    .field-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--divider); gap: 8px; }
+    .field-row:last-of-type { border-bottom: none; }
+    .field-label { color: var(--text3); flex-shrink: 0; }
+    .field-val { font-weight: 500; text-align: right; color: var(--text2); }
+    .cal-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--text); background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; text-decoration: none; }
+    .cal-btn:hover { background: var(--bg3); }
+
+    /* ── Detected event cards ──────────────────────────────────────────── */
+    .detected-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: var(--card-bg); overflow: hidden; transition: border-color 0.15s; }
+    .detected-card.selected { border-color: #3ecf8e; }
+    .detected-card-header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
+    .detect-checkbox { width: 16px; height: 16px; accent-color: #3ecf8e; flex-shrink: 0; cursor: pointer; }
+    .detected-title { font-weight: 600; font-size: 13px; flex: 1; color: var(--text); }
+    .detected-meta  { font-size: 11px; color: var(--text3); }
+    .event-type-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+    .type-dinner      { background: var(--type-dinner-bg);  color: var(--type-dinner-txt); }
+    .type-meeting     { background: var(--type-meeting-bg); color: var(--type-meeting-txt); }
+    .type-appointment { background: var(--type-appt-bg);    color: var(--type-appt-txt); }
+    .type-event       { background: var(--type-event-bg);   color: var(--type-event-txt); }
+    .type-other       { background: var(--type-other-bg);   color: var(--type-other-txt); }
+    .edit-panel { padding: 0 12px 12px; border-top: 1px solid var(--divider); display: none; }
+    .detected-card.selected .edit-panel { display: block; }
+    .edit-row { margin-top: 10px; }
+    .edit-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+    .edit-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; }
+    .edit-input:focus { border-color: var(--border2); }
+    .edit-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .edit-textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; resize: vertical; min-height: 56px; }
+    .edit-textarea:focus { border-color: var(--border2); }
+
+    /* ── Detect action row ─────────────────────────────────────────────── */
+    .detect-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .select-btn { flex: 1; padding: 7px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; color: var(--text2); }
+    .select-btn:hover { background: var(--bg3); }
+    .retry-btn { padding: 7px 14px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; color: var(--text2); display: flex; align-items: center; gap: 5px; }
+    .retry-btn:hover { background: var(--bg3); }
+    .add-cal-btn { width: 100%; padding: 10px; font-size: 13px; font-weight: 600; background: var(--add-cal-bg); color: var(--add-cal-txt); border: none; border-radius: 8px; cursor: pointer; margin-top: 12px; transition: opacity 0.15s; }
+    .add-cal-btn:hover { opacity: 0.88; }
+    .add-cal-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    .footer { margin-top: 16px; display: flex; align-items: center; justify-content: space-between; }
+    #change-key-btn { background: none; border: none; color: var(--footer-txt); font-size: 11px; cursor: pointer; padding: 0; }
+    #change-key-btn:hover { color: var(--text3); text-decoration: underline; }
+
+    /* ── Theme toggle ──────────────────────────────────────────────────── */
+    .theme-toggle { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 500; cursor: pointer; color: var(--text3); display: flex; align-items: center; gap: 5px; transition: background 0.15s; }
+    .theme-toggle:hover { background: var(--bg3); }
+    .theme-toggle-icon { font-size: 13px; line-height: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Travel &amp; Events Shortcut</div>
+      <div class="header-sub">Drop files, paste, or scan the page</div>
+    </div>
+  </div>
+
+  <div class="api-row" id="api-row">
+    <input type="password" id="api-key-input" placeholder="Paste your Gemini API key..." />
+    <button class="api-save-btn" id="save-key-btn">Save</button>
+  </div>
+
+  <div class="url-row">
+    <input type="text" id="url-input" placeholder="Paste a PDF link from email..." />
+    <button class="url-btn" id="url-btn">Fetch</button>
+  </div>
+  <div class="or-divider"><span>or</span></div>
+
+  <div class="drop-zone" id="drop-zone">
+    <div class="upload-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="upload-label" id="drop-label">Drop any file — PDF, email, image, or screenshot</div>
+    <div class="upload-sublabel">Ctrl+V / ⌘V to paste text, images, or files</div>
+    <input type="file" id="file-input" accept=".pdf,.eml,.txt,image/*" multiple />
+    <button class="browse-btn" id="browse-btn">Browse files</button>
+  </div>
+
+  <div class="file-list" id="file-list"></div>
+
+  <button class="btn-primary" id="extract-btn" disabled>Extract calendar events</button>
+
+  <button class="btn-scan" id="scan-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    Scan this page for events
+  </button>
+  <div class="scan-hint">or upload a picture above</div>
+
+  <div id="status"></div>
+  <div id="results"></div>
+
+  <div class="footer">
+    <button class="theme-toggle" id="theme-toggle">
+      <span class="theme-toggle-icon" id="theme-icon">☀️</span>
+      <span id="theme-label">Light mode</span>
+    </button>
+    <button id="change-key-btn" style="display:none;">Change API key</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

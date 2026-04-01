@@ -332,11 +332,13 @@ async function runExtract() {
         setStatus('Extracting travel events...', 'loading');
         const allEvents = [];
         for (const f of travelFiles) {
+          const fIdx = loadedFiles.indexOf(f);
           const parsed = await callGemini(apiKey, [
             { inline_data: { mime_type: f.mimeType, data: f.base64 } },
             { text: TRAVEL_PROMPT }
           ]);
-          allEvents.push(...(parsed.events || []));
+          const tagged = (parsed.events || []).map(ev => ({ ...ev, sourceFileIdx: fIdx }));
+          allEvents.push(...tagged);
         }
         const mismatches = checkMismatches(allEvents);
         if (mismatches) {
@@ -351,6 +353,7 @@ async function runExtract() {
         setStatus('Detecting events...', 'loading');
         const allEvents = [];
         for (const f of [...travelFiles, ...eventFiles]) {
+          const fIdx = f.kind !== 'text' ? loadedFiles.indexOf(f) : undefined;
           let parts;
           if (f.kind === 'text') {
             parts = [{ text: DETECT_PROMPT + '\n\nContent:\n' + f.text }];
@@ -366,7 +369,10 @@ async function runExtract() {
             ];
           }
           const parsed = await callGemini(apiKey, parts);
-          allEvents.push(...(parsed.events || []));
+          const tagged = (parsed.events || []).map(ev =>
+            fIdx !== undefined ? { ...ev, sourceFileIdx: fIdx } : ev
+          );
+          allEvents.push(...tagged);
         }
         detectedEvents = allEvents;
         renderDetectedCards();

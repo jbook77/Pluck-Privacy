@@ -6,6 +6,7 @@ let detectedEvents = [];
 let googleAccount  = null;   // { email, name } or null
 let googleCalendars = [];    // [{ id, name, color }]
 let selectedCalendarId = null;
+let autoExtractDebounce = null;
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scan-btn').addEventListener('click', runScan);
   document.getElementById('browse-btn').addEventListener('click', () => document.getElementById('file-input').click());
   document.getElementById('file-input').addEventListener('change', (e) => {
-    Array.from(e.target.files || []).forEach(loadFile);
+    Array.from(e.target.files || []).forEach(f => loadFile(f, true));
     e.target.value = '';
   });
   document.getElementById('url-btn').addEventListener('click', fetchUrl);
@@ -58,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   dz.addEventListener('drop', (e) => {
     e.preventDefault();
     dz.classList.remove('drag-over');
-    Array.from(e.dataTransfer.files).forEach(loadFile);
+    Array.from(e.dataTransfer.files).forEach(f => loadFile(f, true));
   });
 
   document.addEventListener('paste', handlePaste);
@@ -70,21 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(e.target.checked ? 'light' : 'dark');
   });
 
-  // Google auth
-  document.getElementById('connect-google-btn').addEventListener('click', async () => {
-    try {
-      setStatus('Connecting...', 'loading');
-      const result = await signInWithGoogle();
+  // Google auth — delegated to background service worker so the flow survives popup closing
+  document.getElementById('connect-google-btn').addEventListener('click', () => {
+    setStatus('Connecting...', 'loading');
+    chrome.runtime.sendMessage({ type: 'SIGN_IN' }, async (result) => {
+      setStatus('', '');
+      if (chrome.runtime.lastError || !result || !result.ok) {
+        const msg = (result && result.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'Unknown error';
+        showResult('<div class="error-box">Could not connect Google: ' + escHtml(msg) + '</div>');
+        return;
+      }
       googleAccount = result.userInfo;
       googleCalendars = result.calendars;
       renderFooterSignedIn(googleAccount);
       const stored = await new Promise(r => chrome.storage.local.get('google_last_calendar', r));
       renderCalendarPicker(googleCalendars, stored.google_last_calendar || null);
-      setStatus('', '');
-    } catch(e) {
-      setStatus('', '');
-      showResult('<div class="error-box">Could not connect Google: ' + escHtml(e.message) + '</div>');
-    }
+    });
   });
 
   document.getElementById('sign-out-btn').addEventListener('click', async () => {
@@ -174,6 +176,7 @@ function renderCalendarPicker(calendars, selectedId) {
       dd.classList.remove('open');
       chrome.storage.local.set({ google_last_calendar: selectedCalendarId });
       updateAddBtn();
+      updateTravelCalBtns();
     });
   });
 }
@@ -195,6 +198,12 @@ async function tryAutoSelectCalendar(events) {
       chrome.storage.local.set({ google_last_calendar: matchedId });
     }
   }
+}
+
+function getHiddenCalendars() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('google_hidden_calendars', r => resolve(r.google_hidden_calendars || []));
+  });
 }
 
 // ─── Settings panel ───────────────────────────────────────────────────────────
@@ -310,7 +319,7 @@ function saveKey() {
 }
 
 // ─── File loading ─────────────────────────────────────────────────────────────
-function loadFile(file) {
+function loadFile(file, autoExtract = false) {
   const isImage = file.type.startsWith('image/');
   const isPdf   = file.type === 'application/pdf';
   const isEml   = file.name.endsWith('.eml');
@@ -330,6 +339,10 @@ function loadFile(file) {
     renderFileList();
     document.getElementById('extract-btn').disabled = false;
     clearResults();
+    if (autoExtract) {
+      clearTimeout(autoExtractDebounce);
+      autoExtractDebounce = setTimeout(runExtract, 150);
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -642,7 +655,7 @@ function renderTravelCards(events) {
       + '<div class="field-row"><span class="field-label">Ends</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
       + (ev.location ? '<div class="field-row"><span class="field-label">Route</span><span class="field-val">' + escHtml(ev.location) + '</span></div>' : '')
       + (ev.passengers && ev.passengers.length ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + ev.passengers.length + '</span></div>' : '')
-      + '<button class="cal-btn travel-cal-btn" data-i="' + i + '">' + calSVG + ' Add to Google Calendar</button>'
+      + '<button class="cal-btn travel-cal-btn" data-i="' + i + '">' + calSVG + '<span class="cal-btn-label"> Add to Google Calendar</span></button>'
       + '</div>';
   });
   showResult(html);
@@ -652,6 +665,17 @@ function renderTravelCards(events) {
       const ev = events[idx];
       await addTravelEventToCalendar(ev);
     });
+  });
+  updateTravelCalBtns();
+}
+
+function updateTravelCalBtns() {
+  const cal = googleAccount && selectedCalendarId
+    ? googleCalendars.find(c => c.id === selectedCalendarId)
+    : null;
+  const label = cal ? ' Add to ' + cal.name : ' Add to Google Calendar';
+  document.querySelectorAll('.travel-cal-btn .cal-btn-label').forEach(span => {
+    span.textContent = label;
   });
 }
 

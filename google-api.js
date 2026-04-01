@@ -32,7 +32,7 @@ async function signOutGoogle() {
   if (token) {
     await new Promise(resolve => chrome.identity.removeCachedAuthToken({ token }, resolve));
   }
-  await chrome.storage.local.remove(['google_account', 'google_calendars', 'google_last_calendar', 'google_aliases']);
+  await chrome.storage.local.remove(['google_account', 'google_calendars', 'google_last_calendar', 'google_aliases', 'google_hidden_calendars']);
 }
 
 async function _fetchUserInfo(token) {

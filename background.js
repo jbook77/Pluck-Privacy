@@ -57,19 +57,41 @@ async function _fetchUserInfo(token) {
 
 async function _fetchGmailAttachments(messageId) {
   if (!messageId) throw new Error('No message ID provided');
+  // Gmail DOM IDs may have prefixes like "#msg-f:" or "msg-f:" — strip to get the raw ID
+  messageId = messageId.replace(/^#?msg-[a-z]:/, '');
   const token = await _getToken(false);
 
-  // Fetch full message payload
+  // Try message ID directly; if 400/404, try as thread ID and get first message
+  let msgJson;
   const msgRes = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?format=full`,
     { headers: { 'Authorization': 'Bearer ' + token } }
   );
-  if (!msgRes.ok) throw new Error('Could not fetch Gmail message (status ' + msgRes.status + ')');
-  const msg = await msgRes.json();
+  if (msgRes.ok) {
+    msgJson = await msgRes.json();
+  } else {
+    // Might be a thread ID — try threads endpoint
+    const threadRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(messageId)}?format=full`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    if (!threadRes.ok) throw new Error('Could not fetch Gmail message (status ' + msgRes.status + ', thread status ' + threadRes.status + ', id: ' + messageId + ')');
+    const threadJson = await threadRes.json();
+    // Use the last message in the thread (the one the user is viewing)
+    const msgs = threadJson.messages || [];
+    // Find the message with attachments, preferring the last one
+    msgJson = msgs.reverse().find(m => {
+      const parts = [];
+      _collectAttachmentParts(m.payload, parts);
+      return parts.length > 0;
+    });
+    if (!msgJson) throw new Error('No message with attachments found in this thread');
+  }
 
-  // Collect all attachment parts recursively
+  // Collect all attachment parts recursively from the resolved message
   const attachParts = [];
-  _collectAttachmentParts(msg.payload, attachParts);
+  _collectAttachmentParts(msgJson.payload, attachParts);
+  const resolvedMessageId = msgJson.id;
 
   const qualifying = attachParts.filter(p => {
     const mt = (p.mimeType || '').toLowerCase();
@@ -85,7 +107,7 @@ async function _fetchGmailAttachments(messageId) {
   const files = [];
   for (const part of qualifying) {
     const attRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(part.body.attachmentId)}`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(resolvedMessageId)}/attachments/${encodeURIComponent(part.body.attachmentId)}`,
       { headers: { 'Authorization': 'Bearer ' + token } }
     );
     if (!attRes.ok) throw new Error('Could not fetch attachment: ' + part.filename);

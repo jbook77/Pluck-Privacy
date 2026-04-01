@@ -11,7 +11,7 @@ let autoExtractDebounce = null;
 const TODAY = new Date().toISOString().split('T')[0];
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-const TRAVEL_PROMPT = 'You are a travel data extractor. Extract all flights and hotel stays from the provided confirmation. Return ONLY valid JSON, no markdown, no code fences.\n\nFormat:\n{"events":[{"type":"flight" or "hotel","title":"...","startISO":"ISO8601 with tz offset","endISO":"ISO8601 with tz offset","location":"...","flightKey":"AIRLINECODE+FLIGHTNUMBER+DATE e.g. AA1692-2026-03-27","flightNumber":"e.g. AA1692","departureDate":"YYYY-MM-DD","origin":"city","destination":"city","passengers":[{"name":"...","seat":"...","confirmationCode":"..."}],"baseDetails":"..."}]}\n\nFlight title: Fly [ORIGIN] to [DEST] ([AIRLINE] [NUMBER]) e.g. Fly Newark to Miami (AA 1692)\nFlight baseDetails (each on its own line, no passengers here):\n[Origin airport] ([IATA]) - [Dest airport] ([IATA])\n[Depart time]-[Arrive time] local\n[X]hr [Y]min flight\nCabin Class: [CLASS]\n\nHotel title: Stay at [HOTEL NAME]\nHotel baseDetails:\n[Address]\nCheck-In: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nCheck-Out: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nConfirmation: [NUMBER]\nRoom: [TYPE]\nGuests: [N] Adults\n\nPassengers: First Last order. Remove middle names UNLESS name has numeral suffix (II, III, Jr, Sr). No eticket numbers.\nTimezones (spring/summer DST): New York=-04:00, LA=-07:00, London=+01:00, Buenos Aires=-03:00.\nIf nothing found: {"events":[]}';
+const TRAVEL_PROMPT = 'You are a travel data extractor. Extract all flights, hotel stays, and private/charter flights from the provided document. Return ONLY valid JSON, no markdown, no code fences.\n\nFormat:\n{"events":[{"type":"flight" or "hotel" or "charter","title":"...","startISO":"ISO8601 with tz offset","endISO":"ISO8601 with tz offset","location":"...","flightKey":"...","flightNumber":"...","departureDate":"YYYY-MM-DD","origin":"city","destination":"city","passengers":[...],"baseDetails":"...","isQuote":false}]}\n\n--- COMMERCIAL FLIGHTS (type: "flight") ---\nflightKey: AIRLINECODE+FLIGHTNUMBER+DATE e.g. AA1692-2026-03-27\nflightNumber: e.g. AA1692\nTitle: Fly [ORIGIN] to [DEST] ([2-LETTER AIRLINE CODE] [NUMBER]) — use IATA airline code only, never full airline name. e.g. Fly Newark to Miami (AA 1692)\nbaseDetails (each on its own line, no passengers here):\n[City, State-abbrev-or-2-letter-country-code] ([IATA]) - [City, State-abbrev-or-2-letter-country-code] ([IATA])\ne.g. New York City, NY (JFK) - Buenos Aires, AR (EZE)\n[Depart time]-[Arrive time] local\n[X]hr [Y]min flight\nCabin Class: [CLASS]\npassengers: [{"name":"...","seat":"...","confirmationCode":"..."}]\n\n--- HOTELS (type: "hotel") ---\nTitle: Stay at [HOTEL NAME]\nbaseDetails:\n[Address]\nCheck-In: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nCheck-Out: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nConfirmation: [NUMBER]\nRoom: [TYPE]\nGuests: [N] Adults\n\n--- PRIVATE / CHARTER JETS (type: "charter") ---\nIdentified by: tail numbers (N-numbers), FBO names, "leg" numbering, charter company names, no scheduled airline code.\nflightKey: "charter-[tailNumber or referenceId]-[originICAO]-[YYYY-MM-DD]" e.g. "charter-N609RC-KMJX-2025-08-18"\nTitle: Private: [Departure City, State] to [Arrival City, State] ([ORIGIN ICAO] → [DEST ICAO])\ne.g. Private: Toms River, NJ to Monticello, NY (KMJX → KMSV)\nlocation: departure FBO full address\nisQuote: true if document is a quote/estimate/unconfirmed, false if confirmed booking\npassengers: ["First Last", ...] (names only — no seats for charter)\nbaseDetails:\n[Aircraft Type] | [Tail Number or "N/A"]\nProvider: [Charter company name] (Ref: [reference/trip number])\n\nDEPARTURE FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nARRIVAL FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nPassengers ([N]):\n[numbered list, one per line]\n\nExtract EACH leg as a separate charter event. If no tail number, omit that field.\n\n--- PASSENGER NAME RULES (commercial flights only) ---\nAirline tickets use LASTNAME/GIVEN1 GIVEN2 format. (1) If surname has numeral suffix (II, III, Jr, Sr): use LAST given name, keep suffix: JONAS II/PAUL KEVIN → Kevin Jonas II. (2) Otherwise: use FIRST given name, drop middle names: WEIR/GEORGE CYRIL → George Weir.\n\nTimezones (spring/summer DST): New York=-04:00, LA=-07:00, London=+01:00, Buenos Aires=-03:00, Dubai=+04:00.\nIf nothing found: {"events":[]}';
 
 const DETECT_PROMPT = `You are an event extractor. Today is ${TODAY}. Extract ALL events, appointments, reservations, and meetings from the content. Return ONLY valid JSON, no markdown, no code fences.
 
@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('save-key-btn').addEventListener('click', saveKey);
-  document.getElementById('change-key-btn').addEventListener('click', showApiRow);
   document.getElementById('extract-btn').addEventListener('click', runExtract);
   document.getElementById('scan-btn').addEventListener('click', runScan);
   document.getElementById('browse-btn').addEventListener('click', () => document.getElementById('file-input').click());
@@ -120,6 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
       await renderCalendarPicker(googleCalendars, r.google_last_calendar || null);
     } else {
       renderFooterSignedOut();
+    }
+    // Pick up any files sent from Gmail while popup was closed
+    _pickUpPendingGmailFiles();
+  });
+
+  // Also pick up files if popup is already open when Gmail sends them
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'GMAIL_FILES_READY') {
+      _pickUpPendingGmailFiles();
     }
   });
 });
@@ -242,8 +250,11 @@ async function renderSettingsBody() {
     html += '<div class="settings-section-label" style="margin-top:10px">Other Calendars</div>'
       + other.map(cal => renderAliasCard(cal, aliases[cal.id] || [], hiddenIds)).join('');
   }
+  html += '<div class="settings-section-label" style="margin-top:14px">Gemini API</div>'
+    + '<button class="text-btn" id="change-key-btn" style="font-size:12px">Change API key</button>';
   body.innerHTML = html;
   wireAliasEvents(aliases, hiddenIds);
+  document.getElementById('change-key-btn').addEventListener('click', showApiRow);
 }
 
 function renderAliasCard(cal, calAliases, hiddenIds) {
@@ -263,7 +274,7 @@ function renderAliasCard(cal, calAliases, hiddenIds) {
         + '<button class="alias-tag-remove" data-cal="' + escAttr(cal.id) + '" data-i="' + i + '">×</button>'
         + '</span>'
       ).join('')
-    + '<button class="alias-add-pill" data-cal="' + escAttr(cal.id) + '">+ add</button>'
+    + '<button class="alias-add-pill" data-cal="' + escAttr(cal.id) + '">+ add alias</button>'
     + '</div>'
     + '<div class="alias-input-row" id="alias-input-row-' + escAttr(cal.id) + '" style="display:none">'
     + '<input class="alias-input" id="alias-input-' + escAttr(cal.id) + '" placeholder="Nickname">'
@@ -344,13 +355,12 @@ async function confirmAddAlias(calId, aliases) {
 // ─── API key ──────────────────────────────────────────────────────────────────
 function showMainUI() {
   document.getElementById('api-row').style.display = 'none';
-  document.getElementById('change-key-btn').style.display = 'inline';
 }
 function showApiRow() {
   chrome.storage.local.remove('gemini_api_key');
   document.getElementById('api-key-input').value = '';
   document.getElementById('api-row').style.display = 'flex';
-  document.getElementById('change-key-btn').style.display = 'none';
+  closeSettings();
 }
 function saveKey() {
   const key = document.getElementById('api-key-input').value.trim();
@@ -473,6 +483,34 @@ function flashDropZone() {
   const dz = document.getElementById('drop-zone');
   dz.classList.add('paste-flash');
   setTimeout(() => dz.classList.remove('paste-flash'), 600);
+}
+
+// ─── Gmail file intake ────────────────────────────────────────────────────────
+function loadGmailFiles(files) {
+  files.forEach(f => {
+    loadedFiles.push({
+      name:      f.name,
+      base64:    f.base64,
+      mimeType:  f.mimeType,
+      kind:      f.kind,
+      previewSrc: null
+    });
+  });
+  renderFileList();
+  document.getElementById('extract-btn').disabled = false;
+  clearResults();
+  flashDropZone();
+  clearTimeout(autoExtractDebounce);
+  autoExtractDebounce = setTimeout(runExtract, 150);
+}
+
+async function _pickUpPendingGmailFiles() {
+  const r = await new Promise(resolve => chrome.storage.session.get('pending_gmail_files', resolve));
+  if (!r.pending_gmail_files || !r.pending_gmail_files.length) return;
+  const files = r.pending_gmail_files;
+  await new Promise(resolve => chrome.storage.session.remove('pending_gmail_files', resolve));
+  chrome.action.setBadgeText({ text: '' });
+  loadGmailFiles(files);
 }
 
 // ─── Main extraction ──────────────────────────────────────────────────────────
@@ -621,15 +659,18 @@ async function callGemini(apiKey, parts) {
 
 // ─── Travel helpers ───────────────────────────────────────────────────────────
 function checkMismatches(events) {
-  const flights = events.filter(e => e.type === 'flight' && e.flightKey);
-  if (flights.length < 2) return null;
-  const ref = flights[0];
+  // Group flights by flightKey — only compare flights that claim to be the same leg
+  const groups = {};
+  events.filter(e => e.type === 'flight' && e.flightKey).forEach(ev => {
+    (groups[ev.flightKey] = groups[ev.flightKey] || []).push(ev);
+  });
   const mismatches = [];
-  flights.slice(1).forEach(ev => {
-    if (ev.flightNumber !== ref.flightNumber) mismatches.push({ field: 'Flight', a: ref.flightNumber, b: ev.flightNumber });
-    if (ev.departureDate !== ref.departureDate) mismatches.push({ field: 'Date', a: ref.departureDate, b: ev.departureDate });
-    if (ev.origin && ref.origin && ev.origin.toLowerCase() !== ref.origin.toLowerCase()) mismatches.push({ field: 'Origin', a: ref.origin, b: ev.origin });
-    if (ev.destination && ref.destination && ev.destination.toLowerCase() !== ref.destination.toLowerCase()) mismatches.push({ field: 'Dest', a: ref.destination, b: ev.destination });
+  Object.values(groups).forEach(group => {
+    if (group.length < 2) return;
+    const ref = group[0];
+    group.slice(1).forEach(ev => {
+      if (ev.departureDate !== ref.departureDate) mismatches.push({ field: 'Date conflict for ' + ref.flightNumber, a: ref.departureDate, b: ev.departureDate });
+    });
   });
   return mismatches.length ? mismatches : null;
 }
@@ -644,8 +685,11 @@ function mergeFlights(events) {
           if (!map[ev.flightKey].passengers.some(x => x.name === p.name && x.seat === p.seat))
             map[ev.flightKey].passengers.push(p);
         });
+        if (ev.sourceFileIdx !== undefined && !map[ev.flightKey].sourceFileIdxs.includes(ev.sourceFileIdx))
+          map[ev.flightKey].sourceFileIdxs.push(ev.sourceFileIdx);
       } else {
-        map[ev.flightKey] = { ...ev, passengers: [...(ev.passengers || [])] };
+        const idxs = ev.sourceFileIdx !== undefined ? [ev.sourceFileIdx] : [];
+        map[ev.flightKey] = { ...ev, passengers: [...(ev.passengers || [])], sourceFileIdxs: idxs };
       }
     } else { others.push(ev); }
   });
@@ -654,6 +698,8 @@ function mergeFlights(events) {
 
 function buildTravelDetails(ev) {
   let d = ev.baseDetails || '';
+  // Charter events have passengers already formatted inside baseDetails
+  if (ev.type === 'charter') return d.trim();
   if (ev.passengers && ev.passengers.length) {
     const sorted = [...ev.passengers].sort((a, b) => {
       const v = s => { const m = s && s.match(/^(\d+)([A-Z]?)$/i); return m ? parseInt(m[1]) * 100 + (m[2] ? m[2].charCodeAt(0) : 0) : 0; };
@@ -682,19 +728,30 @@ function renderTravelCards(events) {
   const calSVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
   const flightSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
   const hotelSVG  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
-  let html = '<div class="results-label">' + events.length + ' event' + (events.length > 1 ? 's' : '') + ' found</div>';
+
+  const hasQuote = events.some(ev => ev.isQuote);
+  let html = '';
+  if (hasQuote) {
+    html += '<div class="warn-box" style="margin-bottom:10px"><strong>⚠ This appears to be a quote, not a confirmed booking.</strong> Proceed only if you have the confirmed flight sheet.</div>';
+  }
+  html += '<div class="results-label">' + events.length + ' event' + (events.length > 1 ? 's' : '') + ' found</div>';
   events.forEach((ev, i) => {
     const hotel = ev.type === 'hotel';
+    const charter = ev.type === 'charter';
     const s = ev.startISO, e2 = ev.endISO;
-    const details = buildTravelDetails(ev);
+    const icon = hotel ? hotelSVG : flightSVG;
+    const tagClass = hotel ? 'tag-hotel' : (charter ? 'tag-charter' : 'tag-flight');
+    const tagLabel = hotel ? 'Hotel' : (charter ? 'Charter' : 'Flight');
+    const passengerCount = charter
+      ? (ev.passengers && ev.passengers.length ? ev.passengers.length : 0)
+      : (ev.passengers && ev.passengers.length ? ev.passengers.length : 0);
     html += '<div class="event-card">'
-      + '<div class="event-top"><span class="event-icon">' + (hotel ? hotelSVG : flightSVG) + '</span>'
+      + '<div class="event-top"><span class="event-icon">' + icon + '</span>'
       + '<span class="event-title">' + escHtml(ev.title) + '</span>'
-      + '<span class="tag ' + (hotel ? 'tag-hotel' : 'tag-flight') + '">' + (hotel ? 'Hotel' : 'Flight') + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Starts</span><span class="field-val">' + (hotel ? fmtD(s) : fmtD(s) + ', ' + fmtT(s)) + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Ends</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
-      + (ev.location ? '<div class="field-row"><span class="field-label">Route</span><span class="field-val">' + escHtml(ev.location) + '</span></div>' : '')
-      + (ev.passengers && ev.passengers.length ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + ev.passengers.length + '</span></div>' : '')
+      + '<span class="tag ' + tagClass + '">' + tagLabel + '</span></div>'
+      + '<div class="field-row"><span class="field-label">Departs</span><span class="field-val">' + fmtD(s) + ', ' + fmtT(s) + '</span></div>'
+      + '<div class="field-row"><span class="field-label">Arrives</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
+      + (passengerCount ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + passengerCount + '</span></div>' : '')
       + '<button class="cal-btn travel-cal-btn" data-i="' + i + '">' + calSVG + '<span class="cal-btn-label"> Add to Google Calendar</span></button>'
       + '</div>';
   });
@@ -722,14 +779,16 @@ function updateTravelCalBtns() {
 async function addTravelEventToCalendar(ev) {
   const s = ev.startISO, e2 = ev.endISO;
   const details = buildTravelDetails(ev);
+  const fileIdxs = ev.sourceFileIdxs && ev.sourceFileIdxs.length ? ev.sourceFileIdxs
+    : (ev.sourceFileIdx !== undefined ? [ev.sourceFileIdx] : []);
 
-  // If not signed in or no source file — URL fallback
-  if (!googleAccount || ev.sourceFileIdx === undefined) {
+  // If not signed in or no source files — URL fallback
+  if (!googleAccount || !fileIdxs.length) {
     chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false });
     return;
   }
 
-  setStatus('Uploading file...', 'loading');
+  setStatus('Uploading file' + (fileIdxs.length > 1 ? 's' : '') + '...', 'loading');
   let token;
   try {
     token = await getAuthToken();
@@ -739,12 +798,14 @@ async function addTravelEventToCalendar(ev) {
     return;
   }
 
-  let fileId;
+  const fileIds = [];
   try {
-    fileId = await uploadToDrive(token, loadedFiles[ev.sourceFileIdx]);
+    for (const idx of fileIdxs) {
+      fileIds.push(await uploadToDrive(token, loadedFiles[idx]));
+    }
   } catch(e) {
     setStatus('', '');
-    const btn = document.querySelector('[data-i="' + ev.sourceFileIdx + '"].travel-cal-btn');
+    const btn = document.querySelector('.travel-cal-btn[data-i]');
     if (btn) {
       const wrap = document.createElement('div');
       wrap.className = 'warn-box';
@@ -761,7 +822,7 @@ async function addTravelEventToCalendar(ev) {
   try {
     const created = await createCalendarEvent(token, selectedCalendarId, {
       title: ev.title, startISO: s, endISO: e2, location: ev.location || '', notes: details
-    }, [fileId]);
+    }, fileIds);
     setStatus('', '');
     chrome.tabs.create({ url: created.htmlLink, active: false });
   } catch(e) {

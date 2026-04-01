@@ -623,18 +623,112 @@ function updateAddBtn() {
   if (!btn) return;
   const n = detectedEvents.filter((_, i) => document.getElementById('ck-' + i) && document.getElementById('ck-' + i).checked).length;
   btn.disabled = n === 0;
-  btn.textContent = n === 0 ? 'No events selected' : n === 1 ? 'Add 1 event to Google Calendar' : 'Add ' + n + ' events to Google Calendar';
+  if (n === 0) {
+    btn.textContent = 'No events selected';
+  } else if (googleAccount && selectedCalendarId) {
+    const cal = googleCalendars.find(c => c.id === selectedCalendarId);
+    const calName = cal ? cal.name : 'Google Calendar';
+    btn.textContent = (n === 1 ? 'Add 1 event' : 'Add ' + n + ' events') + ' → ' + calName;
+  } else {
+    btn.textContent = n === 1 ? 'Add 1 event to Google Calendar' : 'Add ' + n + ' events to Google Calendar';
+  }
 }
 
-function addToCalendar() {
-  detectedEvents.forEach((ev, i) => {
-    if (!document.getElementById('ck-' + i) || !document.getElementById('ck-' + i).checked) return;
-    const t = document.getElementById('et-' + i).value.trim() || ev.title;
-    const s = document.getElementById('es-' + i).value.trim() || ev.startISO;
-    const e2 = document.getElementById('ee-' + i).value.trim() || ev.endISO;
-    const l = document.getElementById('el-' + i).value.trim() || ev.location || '';
-    const n = document.getElementById('en-' + i).value.trim() || ev.notes || '';
-    chrome.tabs.create({ url: gcalUrl(t, s, e2, l, n), active: false });
+async function addToCalendar() {
+  const btn = document.getElementById('add-cal-btn');
+  if (btn) btn.disabled = true;
+
+  const selectedEvents = detectedEvents
+    .map((ev, i) => ({ ev, i }))
+    .filter(({ i }) => document.getElementById('ck-' + i) && document.getElementById('ck-' + i).checked)
+    .map(({ ev, i }) => ({
+      title:   document.getElementById('et-' + i).value.trim() || ev.title,
+      startISO: document.getElementById('es-' + i).value.trim() || ev.startISO,
+      endISO:   document.getElementById('ee-' + i).value.trim() || ev.endISO,
+      location: document.getElementById('el-' + i).value.trim() || ev.location || '',
+      notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
+      sourceFileIdx: ev.sourceFileIdx
+    }));
+
+  // If not signed in or no files have a sourceFileIdx — use URL fallback
+  const hasFileEvents = selectedEvents.some(ev => ev.sourceFileIdx !== undefined);
+  if (!googleAccount || !hasFileEvents) {
+    selectedEvents.forEach(ev => {
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+    });
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  setStatus('Uploading files...', 'loading');
+  let token;
+  try {
+    token = await getAuthToken();
+  } catch(e) {
+    setStatus('', '');
+    showResult('<div class="warn-box"><strong>Google connection lost</strong><br>Please sign out and reconnect Google to use file attachments, or <button class="text-btn" id="fallback-url-btn">add without attachment</button>.</div>');
+    document.getElementById('fallback-url-btn').addEventListener('click', () => {
+      selectedEvents.forEach(ev => {
+        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+      });
+    });
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // Upload each unique source file once
+  const fileIdMap = {}; // sourceFileIdx -> fileId
+  const uniqueIdxs = [...new Set(selectedEvents.filter(ev => ev.sourceFileIdx !== undefined).map(ev => ev.sourceFileIdx))];
+  for (const idx of uniqueIdxs) {
+    try {
+      fileIdMap[idx] = await uploadToDrive(token, loadedFiles[idx]);
+    } catch(e) {
+      setStatus('', '');
+      showDriveError(selectedEvents, token, e.message);
+      if (btn) btn.disabled = false;
+      return;
+    }
+  }
+
+  setStatus('Creating events...', 'loading');
+  try {
+    for (const ev of selectedEvents) {
+      const fileIds = (ev.sourceFileIdx !== undefined && fileIdMap[ev.sourceFileIdx])
+        ? [fileIdMap[ev.sourceFileIdx]]
+        : [];
+      const created = await createCalendarEvent(token, selectedCalendarId, ev, fileIds);
+      chrome.tabs.create({ url: created.htmlLink, active: false });
+    }
+    setStatus('', '');
+  } catch(e) {
+    setStatus('', '');
+    showResult('<div class="error-box">Calendar error: ' + escHtml(e.message) + '</div>');
+  }
+  if (btn) btn.disabled = false;
+}
+
+function showDriveError(selectedEvents, token, message) {
+  const html = '<div class="warn-box"><strong>File upload failed</strong><br>' + escHtml(message)
+    + '<div style="display:flex;gap:8px;margin-top:10px">'
+    + '<button class="select-btn" id="drive-retry-btn">Retry</button>'
+    + '<button class="select-btn" id="drive-skip-btn">Add without attachment</button>'
+    + '</div></div>';
+  // Prepend above existing results
+  const results = document.getElementById('results');
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  results.insertBefore(tmp.firstChild, results.firstChild);
+
+  document.getElementById('drive-retry-btn').addEventListener('click', () => {
+    results.querySelector('.warn-box').remove();
+    addToCalendar();
+  });
+  document.getElementById('drive-skip-btn').addEventListener('click', () => {
+    results.querySelector('.warn-box').remove();
+    // Fall back to URL for all selected
+    selectedEvents.forEach(ev => {
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+    });
   });
 }
 

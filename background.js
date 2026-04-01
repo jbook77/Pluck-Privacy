@@ -59,6 +59,10 @@ async function _fetchGmailAttachments(messageId) {
   if (!messageId) throw new Error('No message ID provided');
   // Gmail DOM IDs may have prefixes like "#msg-f:" or "msg-f:" — strip to get the raw ID
   messageId = messageId.replace(/^#?msg-[a-z]:/, '');
+  // Gmail DOM stores IDs as decimal but the API expects hex
+  if (/^\d+$/.test(messageId)) {
+    messageId = BigInt(messageId).toString(16);
+  }
   const token = await _getToken(false);
 
   // Try message ID directly; if 400/404, try as thread ID and get first message

@@ -3,6 +3,9 @@
 // ─── State ────────────────────────────────────────────────────────────────────
 let loadedFiles = [];     // { name, base64, mimeType, kind: 'travel'|'event'|'image', previewSrc? }
 let detectedEvents = [];
+let googleAccount  = null;   // { email, name } or null
+let googleCalendars = [];    // [{ id, name, color }]
+let selectedCalendarId = null;
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -66,6 +69,54 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('theme-toggle-input').addEventListener('change', (e) => {
     applyTheme(e.target.checked ? 'light' : 'dark');
   });
+
+  // Google auth
+  document.getElementById('connect-google-btn').addEventListener('click', async () => {
+    try {
+      setStatus('Connecting...', 'loading');
+      const result = await signInWithGoogle();
+      googleAccount = result.userInfo;
+      googleCalendars = result.calendars;
+      renderFooterSignedIn(googleAccount);
+      const stored = await new Promise(r => chrome.storage.local.get('google_last_calendar', r));
+      renderCalendarPicker(googleCalendars, stored.google_last_calendar || null);
+      setStatus('', '');
+    } catch(e) {
+      setStatus('', '');
+      showResult('<div class="error-box">Could not connect Google: ' + escHtml(e.message) + '</div>');
+    }
+  });
+
+  document.getElementById('sign-out-btn').addEventListener('click', async () => {
+    await signOutGoogle();
+    googleAccount = null;
+    googleCalendars = [];
+    selectedCalendarId = null;
+    renderFooterSignedOut();
+    hideCalendarPicker();
+  });
+
+  // Calendar picker dropdown toggle
+  document.getElementById('cal-picker-btn').addEventListener('click', () => {
+    document.getElementById('cal-picker-dropdown').classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('cal-picker-wrap').contains(e.target)) {
+      document.getElementById('cal-picker-dropdown').classList.remove('open');
+    }
+  });
+
+  // Restore Google sign-in state
+  chrome.storage.local.get(['google_account', 'google_calendars', 'google_last_calendar'], (r) => {
+    if (r.google_account) {
+      googleAccount = r.google_account;
+      googleCalendars = r.google_calendars || [];
+      renderFooterSignedIn(googleAccount);
+      renderCalendarPicker(googleCalendars, r.google_last_calendar || null);
+    } else {
+      renderFooterSignedOut();
+    }
+  });
 });
 
 function applyTheme(theme) {
@@ -75,6 +126,57 @@ function applyTheme(theme) {
   if (toggle) toggle.checked = (theme === 'light');
   const label = document.getElementById('theme-label');
   if (label) label.textContent = (theme === 'light') ? 'Dark mode' : 'Light mode';
+}
+
+// ─── Google auth UI ────────────────────────────────────────────────────────────
+
+function renderFooterSignedOut() {
+  document.getElementById('connect-google-btn').style.display = '';
+  document.getElementById('footer-account').style.display = 'none';
+}
+
+function renderFooterSignedIn(account) {
+  document.getElementById('connect-google-btn').style.display = 'none';
+  const fa = document.getElementById('footer-account');
+  fa.style.display = 'flex';
+  document.getElementById('account-avatar').textContent = (account.name || account.email || '?')[0].toUpperCase();
+  document.getElementById('account-email').textContent = account.email || '';
+}
+
+function renderCalendarPicker(calendars, selectedId) {
+  const row = document.getElementById('cal-picker-row');
+  if (!calendars || !calendars.length) { row.style.display = 'none'; return; }
+  row.style.display = '';
+
+  const sel = calendars.find(c => c.id === selectedId) || calendars[0];
+  selectedCalendarId = sel.id;
+  document.getElementById('cal-picker-dot').style.background = sel.color;
+  document.getElementById('cal-picker-name').textContent = sel.name;
+
+  const dd = document.getElementById('cal-picker-dropdown');
+  dd.innerHTML = calendars.map(c =>
+    '<div class="cal-picker-item' + (c.id === sel.id ? ' active' : '') + '" data-id="' + escAttr(c.id) + '" data-name="' + escAttr(c.name) + '" data-color="' + escAttr(c.color) + '">'
+    + '<span class="cal-dot" style="background:' + escAttr(c.color) + '"></span>'
+    + escHtml(c.name)
+    + '</div>'
+  ).join('');
+
+  dd.querySelectorAll('.cal-picker-item').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedCalendarId = item.getAttribute('data-id');
+      const name = item.getAttribute('data-name');
+      const color = item.getAttribute('data-color');
+      document.getElementById('cal-picker-dot').style.background = color;
+      document.getElementById('cal-picker-name').textContent = name;
+      dd.classList.remove('open');
+      chrome.storage.local.set({ google_last_calendar: selectedCalendarId });
+      updateAddBtn();
+    });
+  });
+}
+
+function hideCalendarPicker() {
+  document.getElementById('cal-picker-row').style.display = 'none';
 }
 
 // ─── API key ──────────────────────────────────────────────────────────────────

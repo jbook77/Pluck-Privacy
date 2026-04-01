@@ -97,12 +97,21 @@ if (location.hostname === 'mail.google.com') {
     }
   }
 
-  // Watch for Gmail SPA navigation and email opens
+  // Watch for Gmail SPA navigation and email opens (throttled to avoid perf issues)
+  let _gmailScanTimer = null;
   const _gmailObserver = new MutationObserver(() => {
-    const result = _findOpenEmailWithAttachments();
-    if (result) {
-      _injectPluckButton(result.messageId, result.attachArea);
-    }
+    if (_gmailScanTimer) return;
+    _gmailScanTimer = setTimeout(() => {
+      _gmailScanTimer = null;
+      const result = _findOpenEmailWithAttachments();
+      if (result) {
+        _injectPluckButton(result.messageId, result.attachArea);
+      } else if (_lastInjectedMsgId) {
+        const old = document.getElementById('pluck-gmail-wrap');
+        if (old) old.remove();
+        _lastInjectedMsgId = null;
+      }
+    }, 300);
   });
 
   _gmailObserver.observe(document.body, { childList: true, subtree: true });

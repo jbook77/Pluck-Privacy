@@ -1,5 +1,8 @@
 'use strict';
 
+// Allow popup to access chrome.storage.session (MV3 requires explicit opt-in)
+chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'SIGN_IN') {
     _doSignIn().then(result => sendResponse({ ok: true, ...result }))

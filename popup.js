@@ -226,14 +226,24 @@ function closeSettings() {
 async function renderSettingsBody() {
   const body = document.getElementById('settings-body');
   if (!googleAccount || !googleCalendars.length) {
-    body.innerHTML = '<div class="settings-hint">Connect Google first to manage aliases.</div>';
+    body.innerHTML = '<div class="settings-hint">Connect Google first to manage calendars.</div>';
     return;
   }
-  const aliases = await getAliases();
-  body.innerHTML = '<div class="settings-section-label">Calendar Aliases</div>'
-    + '<div class="settings-hint">When a name or nickname appears in a document, auto-select that person\'s calendar.</div>'
-    + googleCalendars.map(cal => renderAliasCard(cal, aliases[cal.id] || [])).join('');
-  wireAliasEvents(aliases);
+  const [aliases, hiddenIds] = await Promise.all([getAliases(), getHiddenCalendars()]);
+  const mine  = googleCalendars.filter(c => c.accessRole === 'owner');
+  const other = googleCalendars.filter(c => c.accessRole !== 'owner');
+
+  let html = '<div class="settings-hint">Toggle calendars on or off to control which appear in the picker. Add nicknames to auto-select a calendar when that name appears in a document.</div>';
+  if (mine.length) {
+    html += '<div class="settings-section-label">My Calendars</div>'
+      + mine.map(cal => renderAliasCard(cal, aliases[cal.id] || [], hiddenIds)).join('');
+  }
+  if (other.length) {
+    html += '<div class="settings-section-label" style="margin-top:10px">Other Calendars</div>'
+      + other.map(cal => renderAliasCard(cal, aliases[cal.id] || [], hiddenIds)).join('');
+  }
+  body.innerHTML = html;
+  wireAliasEvents(aliases, hiddenIds);
 }
 
 function renderAliasCard(cal, calAliases, hiddenIds) {

@@ -63,24 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Theme toggle
   const savedTheme = localStorage.getItem('tes_theme') || 'dark';
   applyTheme(savedTheme);
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+  document.getElementById('theme-toggle-input').addEventListener('change', (e) => {
+    applyTheme(e.target.checked ? 'light' : 'dark');
   });
 });
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('tes_theme', theme);
-  const icon  = document.getElementById('theme-icon');
+  const toggle = document.getElementById('theme-toggle-input');
+  if (toggle) toggle.checked = (theme === 'light');
   const label = document.getElementById('theme-label');
-  if (theme === 'light') {
-    icon.textContent  = '🌙';
-    label.textContent = 'Dark mode';
-  } else {
-    icon.textContent  = '☀️';
-    label.textContent = 'Light mode';
-  }
+  if (label) label.textContent = (theme === 'light') ? 'Dark mode' : 'Light mode';
 }
 
 // ─── API key ──────────────────────────────────────────────────────────────────

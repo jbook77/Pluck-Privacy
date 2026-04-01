@@ -274,16 +274,62 @@
   <div class="scan-hint">or upload a picture above</div>
 
   <div id="status"></div>
-  <div id="results"></div>
+    <!-- Calendar picker (shown when signed in, hidden otherwise) -->
+    <div id="cal-picker-row" style="display:none">
+      <div class="picker-label">Add to calendar</div>
+      <div class="cal-picker-wrap" id="cal-picker-wrap">
+        <button class="cal-picker-btn" id="cal-picker-btn" type="button">
+          <span class="cal-picker-selected" id="cal-picker-selected">
+            <span class="cal-dot" id="cal-picker-dot"></span>
+            <span id="cal-picker-name">Select calendar</span>
+          </span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="cal-picker-dropdown" id="cal-picker-dropdown"></div>
+      </div>
+    </div>
 
-  <div class="footer">
-    <button class="theme-toggle" id="theme-toggle">
-      <span class="theme-toggle-icon" id="theme-icon">☀️</span>
-      <span id="theme-label">Light mode</span>
-    </button>
-    <button id="change-key-btn" style="display:none;">Change API key</button>
-  </div>
+    <div id="results"></div>
 
+    <div class="footer" id="main-footer">
+      <!-- Google auth area -->
+      <div id="footer-auth">
+        <button class="connect-google-btn" id="connect-google-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-4.03 1.222-4.979 3.188A4.95 4.95 0 0 0 2.5 8c0 .716.137 1.4.385 2.026C3.878 12.14 5.753 13.33 8 13.33a4.855 4.855 0 0 0 3.363-1.358"/></svg>
+          Connect Google
+        </button>
+        <div id="footer-account" style="display:none">
+          <div class="account-avatar" id="account-avatar">J</div>
+          <span class="account-email" id="account-email">jeremy@example.com</span>
+          <button class="text-btn" id="sign-out-btn">sign out</button>
+        </div>
+      </div>
+      <!-- Right side: settings gear + theme toggle -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="icon-btn" id="settings-btn" title="Settings">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <label class="theme-switch" title="Toggle theme">
+          <input type="checkbox" id="theme-toggle-input">
+          <span class="theme-track"><span class="theme-thumb"></span></span>
+          <span id="theme-label">Light mode</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Settings panel (hidden by default) -->
+    <div id="settings-panel" style="display:none">
+      <div class="settings-header">
+        <button class="icon-btn" id="settings-back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <span class="settings-title">Settings</span>
+      </div>
+      <div id="settings-body"></div>
+    </div>
+
+    <script src="google-api.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

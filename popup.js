@@ -96,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
     hideCalendarPicker();
   });
 
+  document.getElementById('settings-btn').addEventListener('click', openSettings);
+  document.getElementById('settings-back-btn').addEventListener('click', closeSettings);
+
   // Calendar picker dropdown toggle
   document.getElementById('cal-picker-btn').addEventListener('click', () => {
     document.getElementById('cal-picker-dropdown').classList.toggle('open');
@@ -192,6 +195,101 @@ async function tryAutoSelectCalendar(events) {
       chrome.storage.local.set({ google_last_calendar: matchedId });
     }
   }
+}
+
+// ─── Settings panel ───────────────────────────────────────────────────────────
+
+function openSettings() {
+  document.getElementById('settings-panel').style.display = 'flex';
+  renderSettingsBody();
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').style.display = 'none';
+}
+
+async function renderSettingsBody() {
+  const body = document.getElementById('settings-body');
+  if (!googleAccount || !googleCalendars.length) {
+    body.innerHTML = '<div class="settings-hint">Connect Google first to manage aliases.</div>';
+    return;
+  }
+  const aliases = await getAliases();
+  body.innerHTML = '<div class="settings-section-label">Calendar Aliases</div>'
+    + '<div class="settings-hint">When a name or nickname appears in a document, auto-select that person\'s calendar.</div>'
+    + googleCalendars.map(cal => renderAliasCard(cal, aliases[cal.id] || [])).join('');
+  wireAliasEvents(aliases);
+}
+
+function renderAliasCard(cal, calAliases) {
+  return '<div class="alias-cal-card" id="alias-card-' + escAttr(cal.id) + '">'
+    + '<div class="alias-cal-name">'
+    + '<span class="cal-dot" style="background:' + escAttr(cal.color) + '"></span>'
+    + escHtml(cal.name)
+    + '</div>'
+    + '<div class="alias-tags" id="alias-tags-' + escAttr(cal.id) + '">'
+    + calAliases.map((a, i) =>
+        '<span class="alias-tag">' + escHtml(a)
+        + '<button class="alias-tag-remove" data-cal="' + escAttr(cal.id) + '" data-i="' + i + '">×</button>'
+        + '</span>'
+      ).join('')
+    + '<button class="alias-add-pill" data-cal="' + escAttr(cal.id) + '">+ add</button>'
+    + '</div>'
+    + '<div class="alias-input-row" id="alias-input-row-' + escAttr(cal.id) + '" style="display:none">'
+    + '<input class="alias-input" id="alias-input-' + escAttr(cal.id) + '" placeholder="Nickname">'
+    + '<button class="alias-confirm-btn" data-cal="' + escAttr(cal.id) + '">✓</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function wireAliasEvents(aliases) {
+  // Remove alias
+  document.querySelectorAll('.alias-tag-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const calId = btn.getAttribute('data-cal');
+      const idx = parseInt(btn.getAttribute('data-i'));
+      const current = { ...aliases };
+      current[calId] = (current[calId] || []).filter((_, i) => i !== idx);
+      await saveAliases(current);
+      Object.assign(aliases, current);
+      const cal = googleCalendars.find(c => c.id === calId);
+      document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId]);
+      wireAliasEvents(current);
+    });
+  });
+
+  // Show add input
+  document.querySelectorAll('.alias-add-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const calId = btn.getAttribute('data-cal');
+      document.getElementById('alias-input-row-' + calId).style.display = 'flex';
+      document.getElementById('alias-input-' + calId).focus();
+      btn.style.display = 'none';
+    });
+  });
+
+  // Confirm add
+  document.querySelectorAll('.alias-confirm-btn').forEach(btn => {
+    btn.addEventListener('click', () => confirmAddAlias(btn.getAttribute('data-cal'), aliases));
+  });
+  document.querySelectorAll('.alias-input').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirmAddAlias(input.id.replace('alias-input-', ''), aliases);
+    });
+  });
+}
+
+async function confirmAddAlias(calId, aliases) {
+  const input = document.getElementById('alias-input-' + calId);
+  const value = input.value.trim();
+  if (!value) return;
+  const current = { ...aliases };
+  current[calId] = [...(current[calId] || []), value];
+  await saveAliases(current);
+  Object.assign(aliases, current);
+  const cal = googleCalendars.find(c => c.id === calId);
+  document.getElementById('alias-card-' + calId).outerHTML = renderAliasCard(cal, current[calId]);
+  wireAliasEvents(current);
 }
 
 // ─── API key ──────────────────────────────────────────────────────────────────

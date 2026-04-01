@@ -56,7 +56,8 @@ async function fetchCalendarList(token) {
   return (data.items || []).map(cal => ({
     id: cal.id,
     name: cal.summary,
-    color: cal.backgroundColor || '#4285f4'
+    color: cal.backgroundColor || '#4285f4',
+    accessRole: cal.accessRole || 'reader'
   }));
 }
 

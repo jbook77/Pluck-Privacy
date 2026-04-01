@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Transparent background (no fill) -->
+
+  <!-- White sticker shadow/border -->
+  <rect x="10" y="10" width="172" height="172" rx="22" ry="22" fill="white" filter="url(#shadow)"/>
+
+  <!-- Blue calendar body -->
+  <rect x="16" y="16" width="160" height="160" rx="17" ry="17" fill="#1535c9"/>
+
+  <!-- Calendar ring notches (white) -->
+  <rect x="62" y="8" width="16" height="22" rx="5" ry="5" fill="white"/>
+  <rect x="114" y="8" width="16" height="22" rx="5" ry="5" fill="white"/>
+
+  <!-- Calendar header strip (slightly darker blue line implied by rings) -->
+  <rect x="16" y="30" width="160" height="14" fill="#1230b8"/>
+
+  <!-- Curled corner (bottom right) -->
+  <path d="M176 176 Q176 160 160 160 L176 160 Z" fill="white"/>
+  <path d="M176 176 Q176 160 160 160" fill="none" stroke="#1535c9" stroke-width="1.5"/>
+
+  <!-- Airplane icon (white outline style) -->
+  <!-- Body -->
+  <path d="M40 105 L88 95" stroke="white" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Nose -->
+  <path d="M86 95 Q96 93 97 97 Q98 101 88 103 Z" fill="white"/>
+  <!-- Wings -->
+  <path d="M60 97 L50 80 L56 79 L70 95" fill="white"/>
+  <!-- Tail fins -->
+  <path d="M44 102 L40 93 L45 93 L50 101" fill="white"/>
+  <!-- Arrow pointing right -->
+  <path d="M100 100 L110 96 L108 100 L110 104 Z" fill="white"/>
+
+  <!-- Hotel/building icon (white outline style) -->
+  <!-- Building outline -->
+  <rect x="118" y="78" width="46" height="52" rx="2" ry="2" fill="none" stroke="white" stroke-width="3.5"/>
+  <!-- Windows row 1 -->
+  <rect x="124" y="84" width="8" height="7" rx="1" fill="white"/>
+  <rect x="136" y="84" width="8" height="7" rx="1" fill="white"/>
+  <rect x="148" y="84" width="8" height="7" rx="1" fill="white"/>
+  <!-- Windows row 2 -->
+  <rect x="124" y="96" width="8" height="7" rx="1" fill="white"/>
+  <rect x="148" y="96" width="8" height="7" rx="1" fill="white"/>
+  <!-- Bed icon in middle window area -->
+  <rect x="131" y="96" width="16" height="9" rx="1" fill="none" stroke="white" stroke-width="2"/>
+  <circle cx="136" cy="99" r="2.5" fill="white"/>
+  <rect x="138" y="98" width="9" height="5" rx="1" fill="white"/>
+  <!-- Building top extension -->
+  <rect x="128" y="68" width="18" height="12" rx="2" ry="2" fill="none" stroke="white" stroke-width="3.5"/>
+  <!-- Ground line -->
+  <line x1="114" y1="130" x2="168" y2="130" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/>
+    </filter>
+  </defs>
+</svg>

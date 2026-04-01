@@ -179,6 +179,21 @@ function hideCalendarPicker() {
   document.getElementById('cal-picker-row').style.display = 'none';
 }
 
+async function tryAutoSelectCalendar(events) {
+  if (!googleAccount || !googleCalendars.length) return;
+  const aliases = await getAliases();
+  const matchedId = autoSelectCalendar(events, googleCalendars, aliases);
+  if (matchedId) {
+    selectedCalendarId = matchedId;
+    const cal = googleCalendars.find(c => c.id === matchedId);
+    if (cal) {
+      document.getElementById('cal-picker-dot').style.background = cal.color;
+      document.getElementById('cal-picker-name').textContent = cal.name;
+      chrome.storage.local.set({ google_last_calendar: matchedId });
+    }
+  }
+}
+
 // ─── API key ──────────────────────────────────────────────────────────────────
 function showMainUI() {
   document.getElementById('api-row').style.display = 'none';
@@ -347,6 +362,7 @@ async function runExtract() {
           showResult(html + '</div>');
         } else {
           renderTravelCards(mergeFlights(allEvents));
+          tryAutoSelectCalendar(allEvents);
         }
       } else {
         // Event detection — process each file separately, combine results
@@ -375,6 +391,7 @@ async function runExtract() {
           allEvents.push(...tagged);
         }
         detectedEvents = allEvents;
+        await tryAutoSelectCalendar(detectedEvents);
         renderDetectedCards();
       }
       setStatus('', '');
@@ -424,6 +441,7 @@ async function runScan() {
         { text: DETECT_PROMPT + '\n\nPage: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText }
       ]);
       detectedEvents = parsed.events || [];
+      await tryAutoSelectCalendar(detectedEvents);
       setStatus('', '');
       renderDetectedCards();
     } catch(e) {

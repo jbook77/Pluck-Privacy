@@ -56,13 +56,14 @@ if (location.hostname === 'mail.google.com') {
     btn.id = 'pluck-gmail-btn';
     btn.textContent = '\u2708 Send to Pluck';
     btn.style.cssText = [
-      'background:#1a1a2e',
-      'color:#3ecf8e',
-      'border:1px solid #3ecf8e',
-      'border-radius:4px',
+      'background:#1E27AE',
+      'color:#D4A830',
+      'border:1px solid #D4A830',
+      'border-radius:6px',
       'padding:5px 14px',
       'font-size:12px',
-      'font-family:sans-serif',
+      'font-family:Poppins,sans-serif',
+      'font-weight:600',
       'cursor:pointer',
       'line-height:1.4'
     ].join(';');
@@ -75,8 +76,8 @@ if (location.hostname === 'mail.google.com') {
         (resp) => {
           if (resp && resp.ok) {
             btn.textContent = '\u2713 Sent (' + resp.count + ' file' + (resp.count === 1 ? '' : 's') + ') \u2014 open Pluck';
-            btn.style.color = '#3ecf8e';
-            btn.style.borderColor = '#3ecf8e';
+            btn.style.color = '#D4A830';
+            btn.style.borderColor = '#D4A830';
           } else {
             const err = (resp && resp.error) || 'Unknown error';
             btn.textContent = '\u2717 ' + err;

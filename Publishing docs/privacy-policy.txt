@@ -1,0 +1,58 @@
+PRIVACY POLICY — Pluck: Travel & Events
+Last updated: April 2026
+
+1. WHAT PLUCK DOES
+
+Pluck is a Chrome browser extension that extracts event and travel details from documents, emails, and web pages, and helps you add them to Google Calendar.
+
+2. WHAT DATA PLUCK ACCESSES
+
+When you use Pluck, it may access the following data depending on which features you use:
+
+• Page content: When you click "Scan this page," Pluck reads the visible text on the current browser tab. This only happens when you explicitly request it.
+
+• Files you provide: When you drop or paste a file (PDF, image, email), Pluck reads that file to extract event details.
+
+• Gmail attachments: When you click "Send to Pluck" on a Gmail message, Pluck reads the attachments (PDFs and images) from that specific email using the Gmail API. It does not read your email body, subject line, or any other emails.
+
+• Google Calendar: Pluck reads your list of calendars (names and IDs) so you can choose where to add events. When you add an event, Pluck creates a calendar entry with the details you've reviewed and approved.
+
+• Google Drive: When you save event-related files, Pluck may store them in your Google Drive using the Drive API. It only accesses files that you explicitly choose to save through Pluck.
+
+• Your email address: Pluck retrieves your Google account email to display who is signed in.
+
+3. HOW YOUR DATA IS PROCESSED
+
+• Event extraction is performed by Google's Gemini AI model. The content you provide (page text, file data) is sent directly from your browser to Google's Gemini API for processing. Pluck does not route this data through any intermediary server.
+
+• Google Calendar and Gmail interactions go directly from your browser to Google's APIs.
+
+• Pluck has no backend server. All processing happens in your browser or via direct calls to Google APIs.
+
+4. WHAT DATA PLUCK STORES
+
+• Your Gemini API key is stored locally in your browser's extension storage. It is never transmitted anywhere except directly to Google's Gemini API.
+
+• Your Google sign-in session is managed by Chrome's built-in identity system.
+
+• Pluck does not maintain any database, user accounts, or server-side storage.
+
+5. WHAT DATA PLUCK SHARES
+
+Pluck does not share your data with any third parties. Data flows only between your browser and Google's APIs (Gemini, Calendar, Gmail, Drive).
+
+6. ANALYTICS AND TRACKING
+
+Pluck does not include any analytics, telemetry, crash reporting, or tracking of any kind.
+
+7. DATA RETENTION
+
+Pluck does not retain any of your data after you close the extension popup. There is no server-side storage, so there is nothing to delete.
+
+8. CHANGES TO THIS POLICY
+
+If this privacy policy is updated, the changes will be reflected in this document with an updated date.
+
+9. CONTACT
+
+For questions about this privacy policy or how Pluck handles your data, contact: [jeremy@jonasenterprises.com]

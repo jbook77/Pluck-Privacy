@@ -1,0 +1,46 @@
+=== OAUTH SCOPE JUSTIFICATION — for Google Verification Submission ===
+
+App name: Pluck — Travel & Events
+App type: Chrome Extension
+Distribution: Unlisted on Chrome Web Store (shared privately with <20 users)
+
+--- Scope: userinfo.email ---
+Classification: Non-sensitive
+Purpose: Displays the signed-in user's email address in the extension popup so they know which Google account is connected.
+How it works: On sign-in, Pluck retrieves the user's email and displays it. No other profile data is accessed.
+
+--- Scope: drive.file ---
+Classification: Non-sensitive (app-created files only)
+Purpose: Allows users to save event-related files (e.g., extracted itineraries) to their Google Drive.
+How it works: When a user chooses to save a file, Pluck creates it in their Drive. It can only access files that Pluck itself created — it cannot browse or read other Drive files.
+
+--- Scope: calendar.events ---
+Classification: Sensitive
+Purpose: Creates Google Calendar events from the travel and event data that Pluck extracts.
+How it works: After Pluck extracts event details (date, time, title, location) from a document or web page, the user reviews and optionally edits the details, then clicks "Add to Calendar." Pluck creates the event via the Calendar API. It can also read events to avoid duplicates.
+
+--- Scope: calendar.readonly ---
+Classification: Sensitive
+Purpose: Lists the user's Google Calendars so they can choose which calendar to add events to.
+How it works: On sign-in, Pluck fetches the user's calendar list (names, IDs, colors) and presents a dropdown selector. No event data is read through this scope.
+
+--- Scope: gmail.readonly ---
+Classification: Restricted
+Purpose: Reads PDF and image attachments from a specific Gmail message when the user clicks the "Send to Pluck" button.
+How it works: Pluck injects a "Send to Pluck" button on Gmail email messages that contain attachments. When clicked, Pluck uses the Gmail API to fetch ONLY the attachments (PDFs and images) from that specific message. It does not read email bodies, subject lines, contact lists, or any other messages. The attachment data is processed locally in the browser via Google's Gemini AI to extract travel/event details.
+
+Why a narrower scope won't work: There is no Gmail API scope that grants access to only attachments. gmail.readonly is the minimum scope that allows reading message parts (which includes attachment data). The extension does NOT use gmail.send, gmail.modify, or gmail.compose — it is strictly read-only and limited to the single message the user explicitly selects.
+
+--- Data handling ---
+• No data is stored on any external server. All processing happens in the user's browser.
+• Document content is sent directly from the browser to Google's Gemini API for AI extraction.
+• No analytics, tracking, or telemetry of any kind.
+• The extension has no backend server or database.
+
+--- Demo video guidance ---
+Record a screen capture (QuickTime or Loom) showing:
+1. Opening the Pluck popup and signing in with Google
+2. The calendar selector dropdown (shows calendar.readonly in use)
+3. Dropping a PDF and adding the extracted event to Google Calendar (shows calendar.events in use)
+4. Opening a Gmail email with a PDF attachment, clicking "Send to Pluck," and showing the extracted travel data (shows gmail.readonly in use)
+Keep it under 5 minutes. No editing needed — just a walkthrough.

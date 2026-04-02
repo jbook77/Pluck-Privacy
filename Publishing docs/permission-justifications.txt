@@ -1,0 +1,59 @@
+=== SINGLE PURPOSE DESCRIPTION ===
+(Paste this in the Privacy tab under "Single purpose")
+
+Pluck extracts event and travel details from documents, emails, and web pages, and adds them to Google Calendar.
+
+
+=== PERMISSION JUSTIFICATIONS ===
+(Paste each into the corresponding permission field in the Privacy tab)
+
+-- storage --
+Stores the user's Gemini API key and extension preferences locally in the browser.
+
+-- activeTab --
+Reads the visible text content of the current page when the user clicks "Scan this page" to extract event details.
+
+-- scripting --
+Injects a content script to read page text for event extraction and to add the "Send to Pluck" button on Gmail pages.
+
+-- identity --
+Authenticates the user with Google to enable Google Calendar event creation and Gmail attachment reading.
+
+-- unlimitedStorage --
+Allows caching of large PDF and image files during the extraction process so they are not lost if the popup is briefly closed.
+
+-- host_permissions: generativelanguage.googleapis.com --
+Sends document content to Google's Gemini AI API for event and travel data extraction.
+
+-- host_permissions: www.googleapis.com --
+Communicates with Google Calendar API (to create events and list calendars), Gmail API (to read attachments from the current email), and Google Drive API (to save files).
+
+-- content_scripts matching all URLs --
+Injects a content script on all pages to enable two features: (1) reading page text when the user requests "Scan this page," and (2) adding the "Send to Pluck" button on Gmail email pages. The script only activates on user action or when Gmail is detected.
+
+
+=== DATA USE DISCLOSURES ===
+(For the Privacy tab checkboxes — check these items)
+
+Does your extension collect or use any of the following data types?
+
+[x] Website content — Yes: reads visible page text when user clicks "Scan this page"
+[ ] Web history — No
+[x] Authentication information — Yes: Google OAuth token for Calendar/Gmail access
+[ ] Personal communications — No: does not read email body or subjects; only reads attachments when user clicks "Send to Pluck"
+[ ] Location — No
+[ ] Financial and payment information — No
+[ ] Health information — No
+[ ] User activity — No
+
+Is the data used for:
+[x] Extension functionality — Yes, all data is used solely for extracting events and creating calendar entries
+[ ] Analytics — No
+[ ] Developer communications — No
+[ ] Advertising — No
+[ ] Credit or fraud monitoring — No
+[ ] Personalization — No
+
+Is the data transferred:
+[ ] To a server — No (all API calls go directly to Google's servers from the browser)
+[ ] To third parties — No

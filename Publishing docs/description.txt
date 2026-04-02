@@ -1,0 +1,33 @@
+Pluck converts travel confirmations, event invitations, and scheduling documents into Google Calendar events — instantly, without manual copy-pasting.
+
+HOW IT WORKS
+
+Drop a file, paste content, or scan the current page. Pluck uses AI to extract event details (dates, times, locations, confirmation numbers) and creates ready-to-add Google Calendar entries.
+
+TRAVEL MODE
+• Drop PDF flight confirmations, hotel bookings, or charter trip sheets
+• Extracts flights, hotels, and private jet itineraries
+• Handles multi-passenger documents with seat assignments and confirmation codes
+• Creates individual calendar events with all details pre-filled
+
+EVENT DETECTION
+• Scan any webpage, paste text, or drop images
+• Detects dinners, meetings, appointments, press schedules, ceremonies, and more
+• Shows editable event cards — review and adjust before adding to your calendar
+• Handles Zoom links, party sizes, venue addresses, and time zones
+
+GMAIL INTEGRATION
+• "Send to Pluck" button appears on emails with PDF or image attachments
+• One click extracts travel or event data directly from the attachment
+• No need to download files first
+
+GOOGLE CALENDAR
+• Add events directly to any of your Google calendars
+• Choose which calendar to use for each event
+• All event details (title, time, location, notes) pre-filled and editable
+
+PRIVACY
+• Your data is processed by Google's Gemini AI and stays between you and Google
+• No data is stored on external servers
+• No analytics or tracking
+• You provide your own Gemini API key

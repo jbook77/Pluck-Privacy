@@ -137,7 +137,7 @@
     /* ── URL row ───────────────────────────────────────────────────────── */
     .url-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .url-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; color: var(--text); background: var(--bg2); outline: none; }
-    .url-row input::placeholder { color: var(--text4); }
+    .url-row input::placeholder { color: var(--text4); font-weight: 300; }
     .url-row input:focus { border-color: var(--border2); }
     .url-btn { padding: 7px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; color: var(--text2); }
     .url-btn:hover { background: var(--bg3); }
@@ -160,6 +160,9 @@
     #file-input { display: none; }
     .browse-btn { display: inline-block; margin-top: 12px; padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
     .browse-btn:hover { background: var(--bg3); }
+    .drop-zone-collapsed { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg2); font-size: 11px; font-weight: 300; color: var(--text3); }
+    .drop-zone-collapsed .change-link { color: var(--brand); cursor: pointer; text-decoration: underline; font-weight: 500; }
+    .drop-zone-collapsed .change-link:hover { color: var(--accent); }
 
     /* ── File list ─────────────────────────────────────────────────────── */
     .file-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }

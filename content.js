@@ -4,17 +4,21 @@
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'GET_PAGE_TEXT') {
     try {
-      // For Gmail: extract the open email body
-      let text = '';
-      const gmailBody = document.querySelector('.a3s.aiL, .ii.gt .a3s, [data-message-id] .a3s');
-      if (gmailBody) {
-        text = gmailBody.innerText;
-      } else {
-        text = document.body ? document.body.innerText : '';
-      }
+      let text = document.body ? document.body.innerText : '';
       sendResponse({ text: text.slice(0, 20000) });
     } catch(e) {
       sendResponse({ text: '', error: e.message });
+    }
+  }
+  if (msg.type === 'GET_GMAIL_MESSAGE_ID') {
+    try {
+      // Find the open/expanded email's message ID from Gmail DOM
+      const expanded = document.querySelectorAll('[data-message-id]');
+      // The last expanded message is the one the user is viewing
+      const el = expanded.length ? expanded[expanded.length - 1] : null;
+      sendResponse({ messageId: el ? el.getAttribute('data-message-id') : null });
+    } catch(e) {
+      sendResponse({ messageId: null, error: e.message });
     }
   }
   return true;
@@ -71,9 +75,24 @@ if (location.hostname === 'mail.google.com') {
     btn.addEventListener('click', () => {
       btn.textContent = 'Sending\u2026';
       btn.disabled = true;
+      // chrome.runtime.id is undefined when extension context is invalidated (e.g. after reload)
+      if (!chrome.runtime || !chrome.runtime.id) {
+        btn.textContent = '\u2717 Extension reloaded \u2014 refresh this page';
+        btn.style.color = '#ff6b6b';
+        btn.style.borderColor = '#ff6b6b';
+        btn.disabled = false;
+        return;
+      }
       chrome.runtime.sendMessage(
         { type: 'FETCH_GMAIL_ATTACHMENTS', messageId },
         (resp) => {
+          if (chrome.runtime.lastError) {
+            btn.textContent = '\u2717 Extension reloaded \u2014 refresh this page';
+            btn.style.color = '#ff6b6b';
+            btn.style.borderColor = '#ff6b6b';
+            btn.disabled = false;
+            return;
+          }
           if (resp && resp.ok) {
             btn.textContent = '\u2713 Sent (' + resp.count + ' file' + (resp.count === 1 ? '' : 's') + ') \u2014 open Pluck';
             btn.style.color = '#D4A830';

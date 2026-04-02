@@ -22,13 +22,14 @@ Format:
   "startISO": "ISO8601 with tz offset. Infer tz from location (NY spring=-04:00, LA spring=-07:00). If only day-of-week, use next upcoming date from today.",
   "endISO": "ISO8601. Infer if missing: dinner=2hr, party=3hr, pickup=1hr, meeting=1hr, grooming=45min, styling=1.5hr, performance=2hr, photo=3hr, interview=1hr, appointment=1hr",
   "location": "full address, Zoom link, or venue name",
-  "notes": "confirmation number, party size, zoom passcode, provider name, special notes. One per line.",
+  "notes": "confirmation number, party size, zoom passcode, provider name, guest/invitee list, special notes. One per line.",
   "confidence": "high | medium | low"
 }]}
 
 Rules:
 - Restaurants: party size in notes. Name +4 = that person PLUS 4 = Party of 5 total
-- Zoom: full join URL as location, ID and passcode in notes  
+- Zoom: full join URL as location, ID and passcode in notes
+- Invitations/meetings with guests: list all invitees/attendees in notes (name and email if available), one per line
 - Schedules/itineraries: you MUST extract EVERY single time-stamped item as its own event. A 8-page press schedule should produce 20-30+ events. Do not summarize or combine. Each interview, TV appearance, taping, ceremony, brunch, grooming session, depart/arrive, afterparty = its own event with its own card.
 - Hotel check-in/out = one event
 - Stated time ranges like 1PM-5PM: use exactly
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('url-btn').addEventListener('click', fetchUrl);
   document.getElementById('url-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchUrl(); });
+  document.getElementById('change-files-link').addEventListener('click', () => { expandDropZone(); clearResults(); });
 
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
@@ -217,6 +219,7 @@ async function tryAutoSelectCalendar(events) {
       document.getElementById('cal-picker-dot').style.background = cal.color;
       document.getElementById('cal-picker-name').textContent = cal.name;
       chrome.storage.local.set({ google_last_calendar: matchedId });
+      updateTravelCalBtns();
     }
   }
 }
@@ -573,6 +576,7 @@ async function runExtract() {
         } else {
           renderTravelCards(mergeFlights(allEvents));
           tryAutoSelectCalendar(allEvents);
+          collapseDropZone('files');
         }
       } else {
         // Event detection — process each file separately, combine results
@@ -603,6 +607,7 @@ async function runExtract() {
         detectedEvents = allEvents;
         await tryAutoSelectCalendar(detectedEvents);
         renderDetectedCards();
+        collapseDropZone('files');
       }
       setStatus('', '');
     } catch(e) {
@@ -630,10 +635,50 @@ async function runScan() {
       const isOutlook = url.includes('outlook.live.com') || url.includes('outlook.office.com');
 
       let pageText = '';
-      try {
-        const resp = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_TEXT' });
-        pageText = (resp && resp.text) ? resp.text.trim() : '';
-      } catch(e) { pageText = ''; }
+
+      // Gmail: use API if signed in, fall back to paste tip
+      if (isGmail && googleAccount) {
+        let messageId = null;
+        // Inject a one-shot script to grab the message ID from Gmail DOM
+        // (works even when persistent content script context is stale)
+        try {
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              const els = document.querySelectorAll('[data-message-id]');
+              if (!els.length) return null;
+              return els[els.length - 1].getAttribute('data-message-id');
+            }
+          });
+          messageId = results && results[0] && results[0].result;
+        } catch(e) { /* scripting not available */ }
+        if (messageId) {
+          try {
+            setStatus('Reading email via Gmail API...', 'loading');
+            const bodyResp = await new Promise((resolve, reject) => {
+              chrome.runtime.sendMessage({ type: 'FETCH_GMAIL_BODY', messageId }, r => {
+                if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+                if (!r || !r.ok) return reject(new Error((r && r.error) || 'Failed to fetch email'));
+                resolve(r);
+              });
+            });
+            const parts = [];
+            if (bodyResp.subject) parts.push('Subject: ' + bodyResp.subject);
+            if (bodyResp.from) parts.push('From: ' + bodyResp.from);
+            if (bodyResp.date) parts.push('Date: ' + bodyResp.date);
+            if (bodyResp.text) parts.push('\n' + bodyResp.text);
+            pageText = parts.join('\n').slice(0, 20000);
+          } catch(e) { pageText = ''; }
+        }
+      }
+
+      // Non-Gmail pages (or Gmail API failed): use content script
+      if (!pageText) {
+        try {
+          const resp = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_TEXT' });
+          pageText = (resp && resp.text) ? resp.text.trim() : '';
+        } catch(e) { pageText = ''; }
+      }
 
       if (!pageText) {
         if (isGmail || isOutlook) {
@@ -654,6 +699,7 @@ async function runScan() {
       await tryAutoSelectCalendar(detectedEvents);
       setStatus('', '');
       renderDetectedCards();
+      collapseDropZone('scan');
     } catch(e) {
       setStatus('', '');
       showResult('<div class="error-box">' + escHtml(e.message) + '</div>');
@@ -977,9 +1023,8 @@ async function addToCalendar() {
       sourceFileIdx: ev.sourceFileIdx
     }));
 
-  // If not signed in or no files have a sourceFileIdx — use URL fallback
-  const hasFileEvents = selectedEvents.some(ev => ev.sourceFileIdx !== undefined);
-  if (!googleAccount || !hasFileEvents) {
+  // If not signed in — use URL fallback (can't target a specific calendar)
+  if (!googleAccount || !selectedCalendarId) {
     selectedEvents.forEach(ev => {
       chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
     });
@@ -987,7 +1032,6 @@ async function addToCalendar() {
     return;
   }
 
-  setStatus('Uploading files...', 'loading');
   let token;
   try {
     token = await getAuthToken();
@@ -1003,17 +1047,21 @@ async function addToCalendar() {
     return;
   }
 
-  // Upload each unique source file once
+  // Upload source files if any events have them
+  const hasFileEvents = selectedEvents.some(ev => ev.sourceFileIdx !== undefined);
   const fileIdMap = {}; // sourceFileIdx -> fileId
-  const uniqueIdxs = [...new Set(selectedEvents.filter(ev => ev.sourceFileIdx !== undefined).map(ev => ev.sourceFileIdx))];
-  for (const idx of uniqueIdxs) {
-    try {
-      fileIdMap[idx] = await uploadToDrive(token, loadedFiles[idx]);
-    } catch(e) {
-      setStatus('', '');
-      showDriveError(selectedEvents, token, e.message);
-      if (btn) btn.disabled = false;
-      return;
+  if (hasFileEvents) {
+    setStatus('Uploading files...', 'loading');
+    const uniqueIdxs = [...new Set(selectedEvents.filter(ev => ev.sourceFileIdx !== undefined).map(ev => ev.sourceFileIdx))];
+    for (const idx of uniqueIdxs) {
+      try {
+        fileIdMap[idx] = await uploadToDrive(token, loadedFiles[idx]);
+      } catch(e) {
+        setStatus('', '');
+        showDriveError(selectedEvents, token, e.message);
+        if (btn) btn.disabled = false;
+        return;
+      }
     }
   }
 
@@ -1061,7 +1109,36 @@ function showDriveError(selectedEvents, token, message) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function showResult(html) { document.getElementById('results').innerHTML = html; }
-function clearResults() { document.getElementById('results').innerHTML = ''; setStatus('', ''); }
+function clearResults() { document.getElementById('results').innerHTML = ''; setStatus('', ''); expandDropZone(); }
+
+// ─── Drop-zone collapse / expand ─────────────────────────────────────────────
+function collapseDropZone(source) {
+  var summary;
+  if (source === 'scan') {
+    summary = 'Results from page scan';
+  } else {
+    var names = loadedFiles.map(function(f) { return f.name; });
+    summary = names.length === 1 ? names[0] : names.length + ' files loaded';
+  }
+  document.getElementById('collapsed-file-summary').textContent = summary;
+  document.getElementById('url-row').style.display = 'none';
+  document.getElementById('or-divider').style.display = 'none';
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('file-list').style.display = 'none';
+  document.getElementById('extract-btn').style.display = 'none';
+  document.getElementById('scan-btn').style.display = 'none';
+  document.getElementById('drop-zone-collapsed').style.display = '';
+}
+
+function expandDropZone() {
+  document.getElementById('url-row').style.display = '';
+  document.getElementById('or-divider').style.display = '';
+  document.getElementById('drop-zone').style.display = '';
+  document.getElementById('file-list').style.display = '';
+  document.getElementById('extract-btn').style.display = '';
+  document.getElementById('scan-btn').style.display = '';
+  document.getElementById('drop-zone-collapsed').style.display = 'none';
+}
 function setStatus(msg, type) {
   const el = document.getElementById('status');
   if (!msg) { el.innerHTML = ''; return; }

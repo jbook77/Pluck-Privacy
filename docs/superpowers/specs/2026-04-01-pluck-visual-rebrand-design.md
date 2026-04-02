@@ -2,13 +2,13 @@
 
 **Date:** 2026-04-01  
 **Status:** Draft  
-**Scope:** Aesthetic/cosmetic refresh only — no functional changes to extraction, API calls, or event logic
+**Scope:** Visual rebrand + expanded event type taxonomy (prompt & rendering updates)
 
 ---
 
 ## Overview
 
-Rebrand the "Travel & Events Shortcut" Chrome extension as **Pluck** with a new visual identity inspired by Linear: deep dark UI, clean typography, and a confident indigo + gold color scheme. Font: Poppins (Google Fonts). Logo: placeholder until final asset is ready.
+Rebrand the "Travel & Events Shortcut" Chrome extension as **Pluck** with a new visual identity inspired by Linear: deep dark UI, clean typography, and a confident indigo + gold color scheme. Font: Poppins (Google Fonts). Logo: inline SVG from `icons/Calendar icon with airplane logo.svg`, fills use `var(--brand)` for theme adaptivity.
 
 ---
 
@@ -29,7 +29,7 @@ Rebrand the "Travel & Events Shortcut" Chrome extension as **Pluck** with a new 
 
 | Token | Value | Usage |
 |---|---|---|
-| `--brand` | `#1D1DA4` | Logo, brand accents, active toggle states |
+| `--brand` | `#1E27AE` | Logo, brand accents, active toggle states |
 | `--accent` | `#F0C040` | Primary buttons, CTAs, success states, selected file indicators |
 | `--accent-hover` | `#D4A830` | Hover state for gold elements |
 
@@ -37,7 +37,7 @@ Rebrand the "Travel & Events Shortcut" Chrome extension as **Pluck** with a new 
 
 | Token | Value | Usage |
 |---|---|---|
-| `--bg` | `#0f0f14` | Page background |
+| `--bg` | `#1E27AE` | Page background (rendered as radial gradient — see Gradient Backgrounds below) |
 | `--bg2` | `#181820` | Cards, inputs, elevated surfaces |
 | `--bg3` | `#22222e` | Hover states, tertiary surfaces |
 | `--border` | `#2a2a3a` | Default borders |
@@ -53,7 +53,7 @@ Update existing light theme to complement the indigo/gold identity. Shift from c
 
 | Token | Value | Usage |
 |---|---|---|
-| `--bg` | `#f4f4fa` | Page background (soft indigo-white) |
+| `--bg` | `#e3e0e1` | Page background (warm lavender, rendered as radial gradient — see Gradient Backgrounds below) |
 | `--bg2` | `#eaeaf4` | Cards, inputs |
 | `--bg3` | `#dddde8` | Hover states |
 | `--border` | `#c8c8d8` | Default borders |
@@ -62,7 +62,7 @@ Update existing light theme to complement the indigo/gold identity. Shift from c
 | `--text2` | `#3a3a58` | Secondary text |
 | `--text3` | `#7a7a98` | Muted labels |
 | `--text4` | `#a8a8c0` | Hint text |
-| `--brand` | `#1D1DA4` | Same as dark |
+| `--brand` | `#1E27AE` | Same as dark |
 | `--accent` | `#C8960A` | Slightly darker gold for light backgrounds |
 | `--accent-hover` | `#A87A00` | Hover |
 
@@ -96,7 +96,7 @@ No changes from current values — keep existing radius and spacing:
 
 ### Header
 
-- **Logo:** Placeholder — 32x32 indigo (`#1D1DA4`) rounded-rect with white "P" in Poppins 700. Will be replaced with final logo PNG later.
+- **Logo:** Inline SVG from the calendar-airplane icon, 32x32, blue fills use `var(--brand)` and white fills use `#fff` for theme adaptivity. Wrapped in a rounded-rect container with 8px radius.
 - **Title:** "Pluck" in Poppins 700, 16px, `--text`
 - **Subtitle:** "Travel & Events" in Poppins 300, 11px, `--text3`
 - Layout: same flex row with gap
@@ -154,18 +154,32 @@ No changes from current values — keep existing radius and spacing:
 
 ### Event Type Tags
 
-Updated hues to complement indigo/gold palette:
+Each tag includes a small inline SVG icon (10x10, stroke style matching the tag text color) followed by the uppercase label. Tags use `display: inline-flex; align-items: center; gap: 3px`.
 
-| Type | Background | Text |
-|---|---|---|
-| Flight | `#0e1530` | `#5a8af7` |
-| Hotel | `#0d1f17` | `#3ecf8e` |
-| Charter | `#1a1040` | `#b794f4` |
-| Dinner | `#2a1a00` | `#F0C040` |
-| Meeting | `#0e1530` | `#5a8af7` |
-| Appointment | `#1a1040` | `#a07cf0` |
-| Event | `#1a0018` | `#e060d0` |
-| Other | `#22222e` | `#6a6a80` |
+#### Travel tags (from TRAVEL_PROMPT)
+
+| Type | Icon | Dark BG / Text | Light BG / Text |
+|---|---|---|---|
+| FLIGHT | Airplane | `#0e1530` / `#5a8af7` | `#dde4f8` / `#2a4aa0` |
+| HOTEL | Building | `#0d1f17` / `#3ecf8e` | `#d0f0e0` / `#0d6644` |
+| CHARTER | Airplane | `#1a1040` / `#b794f4` | `#e8e0f8` / `#5a2ea8` |
+
+#### Detected event tags (from DETECT_PROMPT)
+
+| Type | Icon | Dark BG / Text | Light BG / Text |
+|---|---|---|---|
+| DINNER | Fork & knife | `#2a1a00` / `#F0C040` | `#f8edd0` / `#8a5a00` |
+| PARTY | Confetti/sparkle | `#1a0018` / `#e060d0` | `#f4ddf8` / `#8a0aa0` |
+| PICKUP | Car | `#261400` / `#f09040` | `#f8e8d0` / `#8a4a00` |
+| MEETING | Two people | `#0e1530` / `#5a8af7` | `#dde4f8` / `#2a4aa0` |
+| GROOMING | Scissors | `#081a1a` / `#40c8b0` | `#d0f0ea` / `#0a6858` |
+| STYLING | Shirt | `#1a0a14` / `#f07090` | `#f8dde4` / `#8a2040` |
+| PERFORMANCE | Microphone | `#14103a` / `#8888f0` | `#e0e0f8` / `#3a3aa0` |
+| PHOTO | Camera | `#0a1820` / `#40b8e8` | `#d4eaf8` / `#0a5878` |
+| INTERVIEW | Speech bubble | `#181a08` / `#a8c840` | `#eaf0d0` / `#4a6010` |
+| APPOINTMENT | (generic) | `#1a1040` / `#a07cf0` | `#e8e0f8` / `#5a2ea8` |
+| EVENT | (generic) | `#1a0018` / `#e060d0` | `#f4ddf8` / `#8a0aa0` |
+| OTHER | (none) | `#22222e` / `#6a6a80` | `#e8e8f0` / `#7a7a98` |
 
 ### Travel Cards
 
@@ -231,16 +245,90 @@ Updated hues to complement indigo/gold palette:
 
 ---
 
+## Gradient Backgrounds
+
+Both themes use a radial gradient with a champagne/brand glow in the top-right corner. On results load, `background-size` transitions from `100%` to `108%` over `0.3s ease-out` for a subtle breathing effect.
+
+**Dark theme:**
+```css
+radial-gradient(circle at 95% 5%, #c8b898 0%, #887898 12%, #3838a0 25%, #1E27AE 40%, #1E27AE 100%)
+```
+
+**Light theme:**
+```css
+radial-gradient(circle at 95% 5%, #1E27AE 0%, #7878c0 12%, #b0b0d0 25%, #e3e0e1 40%, #e3e0e1 100%)
+```
+
+---
+
+## Expanded Event Type Taxonomy (Functional Change)
+
+The current `DETECT_PROMPT` only recognizes 5 event types: `dinner | meeting | appointment | event | other`. This must be expanded to support the entertainment industry workflows the extension is built for.
+
+### Changes to `popup.js`
+
+**1. Update `DETECT_PROMPT` (line 20)**
+
+Replace the type enum:
+```
+"type": "dinner | party | pickup | meeting | grooming | styling | performance | photo | interview | appointment | event | other"
+```
+
+Update the duration inference hints (line 23):
+```
+"endISO": "ISO8601. Infer if missing: dinner=2hr, party=3hr, pickup=1hr, meeting=1hr, grooming=45min, styling=1.5hr, performance=2hr, photo=3hr, interview=1hr, appointment=1hr"
+```
+
+Add classification guidance to the Rules section:
+```
+- GROOMING: haircuts, barber, nails, facials, skincare, spa treatments
+- STYLING: wardrobe fittings, getting dressed, outfit prep, fashion styling sessions
+- PERFORMANCE: concerts, live shows, music performances, sets, soundchecks
+- PHOTO: photo shoots, press photos, campaign shoots, headshots
+- INTERVIEW: magazine interviews, press interviews, podcast guest appearances, Q&As
+- PARTY: after-parties, galas, celebrations, receptions, launch events
+- PICKUP: car service, driver, airport transfer, ride to/from venue
+```
+
+**2. Update `renderDetectedCards()` (lines 856-874)**
+
+Expand the `typeClass` map:
+```js
+const typeClass = {
+  dinner:'type-dinner', party:'type-party', pickup:'type-pickup',
+  meeting:'type-meeting', grooming:'type-grooming', styling:'type-styling',
+  performance:'type-performance', photo:'type-photo', interview:'type-interview',
+  appointment:'type-appointment', event:'type-event'
+};
+```
+
+Expand the `typeLabel` map:
+```js
+const typeLabel = {
+  dinner:'Dinner', party:'Party', pickup:'Pickup',
+  meeting:'Meeting', grooming:'Grooming', styling:'Styling',
+  performance:'Performance', photo:'Photo', interview:'Interview',
+  appointment:'Appointment', event:'Event', other:'Other'
+};
+```
+
+Add an `typeIcon` map with inline SVG strings for each type (10x10 stroke icons), and update the tag rendering at line 874 to include the icon before the label text.
+
+**3. Add CSS for new tag types in `popup.html`**
+
+Add CSS custom properties for each new type's background and text colors (both dark and light themes), plus the corresponding `.type-*` classes. See Event Type Tags table above for all values.
+
+---
+
 ## What Does NOT Change
 
-- `popup.js` — no logic, event listeners, API calls, or data flow changes
 - `content.js` — untouched
 - `background.js` / `google-api.js` — untouched
-- `manifest.json` — untouched (icon swap is a future task)
-- Extraction prompts — untouched
+- `manifest.json` — icon references updated separately (add 32px)
 - Any `chrome.storage` keys or data structures
 - The HTML structure of event cards, edit panels, file items — only CSS properties change
 - Google Calendar URL generation — untouched
+- `TRAVEL_PROMPT` — untouched (flight/hotel/charter types remain the same)
 
 ---
 
@@ -248,12 +336,20 @@ Updated hues to complement indigo/gold palette:
 
 1. Build `UI Design/preview.html` with all components mocked up
 2. Iterate on preview with user until approved
-3. Apply to real `popup.html` in this order:
+3. Apply CSS changes to real `popup.html`:
    a. Add Google Fonts `<link>` tag + update `font-family`
-   b. Replace CSS custom property values (dark theme)
-   c. Replace CSS custom property values (light theme)
-   d. Update header (logo placeholder + "Pluck" text)
+   b. Replace CSS custom property values (dark theme) + gradient background
+   c. Replace CSS custom property values (light theme) + gradient background
+   d. Update header (inline SVG logo + "Pluck" text)
    e. Update button styles (gold CTA)
-   f. Update tag colors
+   f. Add new event type tag CSS variables and classes (all 12 types)
    g. Add drop zone collapse behavior
-4. Each step: user approval → apply → `node --check popup.js` → Chrome reload test → log in changelog
+   h. Add gradient animation (`background-size` transition on results load)
+4. Apply functional changes to `popup.js`:
+   a. Expand `DETECT_PROMPT` type enum and duration hints
+   b. Add event type classification guidance to prompt rules
+   c. Expand `typeClass` and `typeLabel` maps in `renderDetectedCards()`
+   d. Add `typeIcon` map with inline SVG strings for each type
+   e. Update tag rendering to include icon SVGs
+5. Update `manifest.json` to reference 32px icon
+6. Each step: user approval → apply → `node --check popup.js` → Chrome reload test → log in changelog

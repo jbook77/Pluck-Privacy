@@ -16,6 +16,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch(e   => sendResponse({ ok: false, error: e.message }));
     return true;
   }
+
+  if (msg.type === 'FETCH_GMAIL_BODY') {
+    _fetchGmailBody(msg.messageId)
+      .then(result => sendResponse({ ok: true, ...result }))
+      .catch(e   => sendResponse({ ok: false, error: e.message }));
+    return true;
+  }
 });
 
 async function _doSignIn() {
@@ -57,6 +64,9 @@ async function _fetchUserInfo(token) {
 
 async function _fetchGmailAttachments(messageId) {
   if (!messageId) throw new Error('No message ID provided');
+  // Keep service worker alive during long attachment downloads (MV3 can terminate after ~30s idle)
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
+  try {
   // Gmail DOM IDs may have prefixes like "#msg-f:", "msg-f:", or "r-" — strip to get the raw ID
   messageId = messageId.replace(/^#?msg-[a-z]:/, '').replace(/^r-/, '');
   // Gmail DOM stores IDs as decimal but the API expects hex
@@ -150,6 +160,9 @@ async function _fetchGmailAttachments(messageId) {
   });
 
   return files.length;
+  } finally {
+    clearInterval(keepAlive);
+  }
 }
 
 function _collectAttachmentParts(part, result) {
@@ -159,6 +172,80 @@ function _collectAttachmentParts(part, result) {
   }
   if (part.parts) {
     part.parts.forEach(p => _collectAttachmentParts(p, result));
+  }
+}
+
+async function _fetchGmailBody(messageId) {
+  if (!messageId) throw new Error('No message ID provided');
+  // Strip DOM prefixes and convert decimal to hex (same as attachment flow)
+  messageId = messageId.replace(/^#?msg-[a-z]:/, '').replace(/^r-/, '');
+  if (/^\d+$/.test(messageId)) {
+    messageId = BigInt(messageId).toString(16);
+  }
+  const token = await _getToken(false);
+
+  let msgJson;
+  const msgRes = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?format=full`,
+    { headers: { 'Authorization': 'Bearer ' + token } }
+  );
+  if (msgRes.ok) {
+    msgJson = await msgRes.json();
+  } else {
+    // Try as thread ID
+    const threadRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(messageId)}?format=full`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    if (!threadRes.ok) throw new Error('Could not fetch Gmail message');
+    const threadJson = await threadRes.json();
+    const msgs = threadJson.messages || [];
+    msgJson = msgs[msgs.length - 1]; // last message in thread
+    if (!msgJson) throw new Error('No messages found in thread');
+  }
+
+  // Extract headers
+  const headers = msgJson.payload.headers || [];
+  const subject = (headers.find(h => h.name.toLowerCase() === 'subject') || {}).value || '';
+  const from = (headers.find(h => h.name.toLowerCase() === 'from') || {}).value || '';
+  const date = (headers.find(h => h.name.toLowerCase() === 'date') || {}).value || '';
+
+  // Extract body text from message parts
+  const text = _extractBodyText(msgJson.payload);
+  return { text, subject, from, date };
+}
+
+function _extractBodyText(payload) {
+  // Try to find text/plain first, fall back to text/html stripped of tags
+  let plain = '';
+  let html = '';
+  _collectBodyParts(payload, (mime, data) => {
+    const decoded = _decodeBase64Url(data);
+    if (mime === 'text/plain' && !plain) plain = decoded;
+    if (mime === 'text/html' && !html) html = decoded;
+  });
+  if (plain) return plain;
+  if (html) return html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+  return '';
+}
+
+function _collectBodyParts(part, cb) {
+  if (!part) return;
+  const mime = (part.mimeType || '').toLowerCase();
+  if ((mime === 'text/plain' || mime === 'text/html') && part.body && part.body.data) {
+    cb(mime, part.body.data);
+  }
+  if (part.parts) {
+    part.parts.forEach(p => _collectBodyParts(p, cb));
+  }
+}
+
+function _decodeBase64Url(data) {
+  const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
+  try {
+    return decodeURIComponent(escape(atob(base64)));
+  } catch(e) {
+    return atob(base64);
   }
 }
 

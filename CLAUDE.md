@@ -192,6 +192,10 @@ node -e "const fs=require('fs'); const c=fs.readFileSync('popup.js','utf8'); new
 - Do not add `<form>` tags — Chrome extension popups handle forms poorly
 - Do not use template literals with backticks inside single-quoted JS strings without escaping apostrophes — this has caused syntax errors before
 
+### Agent workflows
+- Save all agent workflow files (plans, specs, execution logs) to the `work flows/` folder in the project root
+- This keeps implementation artifacts organized and separate from source code and documentation
+
 ---
 
 ## Development Setup

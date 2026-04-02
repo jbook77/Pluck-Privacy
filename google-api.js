@@ -158,8 +158,21 @@ function autoSelectCalendar(extractedEvents, calendars, aliases) {
 
   const matched = new Set();
   for (const cal of calendars) {
-    const calAliases = aliases[cal.id] || [];
-    for (const alias of calAliases) {
+    // Build match terms: user-defined aliases + calendar name + name derived from email
+    const calAliases = (aliases[cal.id] || []).slice();
+    // Add the calendar display name (e.g. "Danielle Jonas", "K2 Calendar")
+    if (cal.name) calAliases.push(cal.name);
+    // Add first name and full name derived from email local part (e.g. "jeremy" from "jeremy@...")
+    if (cal.id && cal.id.includes('@')) {
+      const local = cal.id.split('@')[0];
+      // Split on dots/underscores/plus to get name parts (e.g. "jeremy.book" → "jeremy", "book")
+      const parts = local.split(/[._+]/);
+      if (parts.length >= 2) calAliases.push(parts.join(' ')); // "jeremy book"
+      parts.forEach(p => { if (p.length >= 3) calAliases.push(p); }); // "jeremy", "book"
+    }
+    // Deduplicate and filter short strings that would false-match
+    const uniqueAliases = [...new Set(calAliases.map(a => a.toLowerCase()))].filter(a => a.length >= 3);
+    for (const alias of uniqueAliases) {
       const re = new RegExp('\\b' + alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
       if (re.test(corpus)) {
         matched.add(cal.id);

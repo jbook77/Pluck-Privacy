@@ -107,8 +107,18 @@
     body {
       width: 440px; min-height: 200px;
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px; color: var(--text); background: var(--bg); padding: 20px;
+      font-size: 13px; font-weight: 500;
+      color: var(--text); background: var(--bg); padding: 20px;
       transition: background 0.2s, color 0.2s;
+      background-size: 100% 100%;
+    }
+    [data-theme="dark"] body {
+      background: radial-gradient(circle at 95% 5%, #c8b898 0%, #887898 12%, #3838a0 25%, #1E27AE 40%, #1E27AE 100%);
+      background-size: 100% 100%;
+    }
+    [data-theme="light"] body {
+      background: radial-gradient(circle at 95% 5%, #1E27AE 0%, #7878c0 12%, #b0b0d0 25%, #e3e0e1 40%, #e3e0e1 100%);
+      background-size: 100% 100%;
     }
 
     /* ── Header ────────────────────────────────────────────────────────── */

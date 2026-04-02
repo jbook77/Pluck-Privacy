@@ -863,6 +863,13 @@ function renderDetectedCards() {
   }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
   const fmtT = d => new Date(d).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  function _parseISO(iso) {
+    if (!iso) return { date: '', time: '', tz: '' };
+    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
+    if (!m) return { date: '', time: '', tz: '' };
+    return { date: m[1], time: m[2], tz: m[3] || '' };
+  }
+  function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
   const typeClass = { dinner:'type-dinner', party:'type-party', pickup:'type-pickup', meeting:'type-meeting', grooming:'type-grooming', styling:'type-styling', performance:'type-performance', photo:'type-photo', interview:'type-interview', appointment:'type-appointment', event:'type-event' };
   const typeLabel = { dinner:'Dinner', party:'Party', pickup:'Pickup', meeting:'Meeting', grooming:'Grooming', styling:'Styling', performance:'Performance', photo:'Photo', interview:'Interview', appointment:'Appointment', event:'Event', other:'Other' };
   const typeIcon = {
@@ -898,8 +905,10 @@ function renderDetectedCards() {
       + '</div>'
       + '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="et-' + i + '" value="' + escAttr(ev.title) + '"></div>'
-      + '<div class="edit-row-2"><div><div class="edit-label">Start</div><input class="edit-input" id="es-' + i + '" value="' + escAttr(ev.startISO || '') + '"></div>'
-      + '<div><div class="edit-label">End</div><input class="edit-input" id="ee-' + i + '" value="' + escAttr(ev.endISO || '') + '"></div></div>'
+      + (function() { var sp = _parseISO(ev.startISO), ep = _parseISO(ev.endISO);
+         return '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="esd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
+         + '<div class="edit-row-2"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
+         + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'; })()
       + '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="el-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
       + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="en-' + i + '">' + escHtml(ev.notes || '') + '</textarea></div>'
       + '</div></div>';
@@ -961,8 +970,8 @@ async function addToCalendar() {
     .filter(({ i }) => document.getElementById('ck-' + i) && document.getElementById('ck-' + i).checked)
     .map(({ ev, i }) => ({
       title:   document.getElementById('et-' + i).value.trim() || ev.title,
-      startISO: document.getElementById('es-' + i).value.trim() || ev.startISO,
-      endISO:   document.getElementById('ee-' + i).value.trim() || ev.endISO,
+      startISO: (function() { var d = document.getElementById('esd-' + i), t = document.getElementById('est-' + i); return d && t && d.value && t.value ? d.value + 'T' + t.value + ':00' + (t.getAttribute('data-tz') || '') : ev.startISO; })(),
+      endISO:   (function() { var d = document.getElementById('esd-' + i), t = document.getElementById('eet-' + i); return d && t && d.value && t.value ? d.value + 'T' + t.value + ':00' + (t.getAttribute('data-tz') || '') : ev.endISO; })(),
       location: document.getElementById('el-' + i).value.trim() || ev.location || '',
       notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
       sourceFileIdx: ev.sourceFileIdx

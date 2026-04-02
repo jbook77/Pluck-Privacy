@@ -241,6 +241,8 @@
     .edit-label { font-size: 10px; font-weight: 300; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
     .edit-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; }
     .edit-input:focus { border-color: var(--border2); }
+    [data-theme="dark"] .edit-input[type="date"], [data-theme="dark"] .edit-input[type="time"] { color-scheme: dark; }
+    [data-theme="light"] .edit-input[type="date"], [data-theme="light"] .edit-input[type="time"] { color-scheme: light; }
     .edit-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .edit-textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; resize: vertical; min-height: 56px; }
     .edit-textarea:focus { border-color: var(--border2); }

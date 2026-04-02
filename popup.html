@@ -199,7 +199,8 @@
     .event-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .event-icon { color: var(--text3); display: flex; align-items: center; flex-shrink: 0; }
     .event-title { font-weight: 600; font-size: 13px; flex: 1; line-height: 1.3; color: var(--text); }
-    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
+    .tag svg { flex-shrink: 0; }
     .tag-flight   { background: var(--tag-flight-bg);   color: var(--tag-flight-txt); }
     .tag-hotel    { background: var(--tag-hotel-bg);    color: var(--tag-hotel-txt); }
     .tag-charter  { background: var(--tag-charter-bg);  color: var(--tag-charter-txt); }
@@ -217,12 +218,20 @@
     .detect-checkbox { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
     .detected-title { font-weight: 600; font-size: 13px; flex: 1; color: var(--text); }
     .detected-meta  { font-size: 11px; color: var(--text3); }
-    .event-type-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+    .event-type-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
+    .event-type-tag svg { flex-shrink: 0; }
     .type-dinner      { background: var(--type-dinner-bg);  color: var(--type-dinner-txt); }
     .type-meeting     { background: var(--type-meeting-bg); color: var(--type-meeting-txt); }
     .type-appointment { background: var(--type-appt-bg);    color: var(--type-appt-txt); }
     .type-event       { background: var(--type-event-bg);   color: var(--type-event-txt); }
     .type-other       { background: var(--type-other-bg);   color: var(--type-other-txt); }
+    .type-party       { background: var(--type-party-bg);    color: var(--type-party-txt); }
+    .type-pickup      { background: var(--type-pickup-bg);   color: var(--type-pickup-txt); }
+    .type-grooming    { background: var(--type-grooming-bg); color: var(--type-grooming-txt); }
+    .type-styling     { background: var(--type-styling-bg);  color: var(--type-styling-txt); }
+    .type-performance { background: var(--type-perform-bg);  color: var(--type-perform-txt); }
+    .type-photo       { background: var(--type-photo-bg);    color: var(--type-photo-txt); }
+    .type-interview   { background: var(--type-interview-bg);color: var(--type-interview-txt); }
     .edit-panel { padding: 0 12px 12px; border-top: 1px solid var(--divider); display: none; }
     .detected-card.selected .edit-panel { display: block; }
     .edit-row { margin-top: 10px; }

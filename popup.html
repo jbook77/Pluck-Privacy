@@ -123,10 +123,9 @@
 
     /* ── Header ────────────────────────────────────────────────────────── */
     .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--header-border); }
-    .header-icon { width: 32px; height: 32px; background: var(--btn-primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .header-icon svg { stroke: var(--btn-primary-txt); }
-    .header-title { font-size: 15px; font-weight: 600; color: var(--text); }
-    .header-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .header-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .header-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .header-sub { font-size: 11px; font-weight: 300; color: var(--text3); margin-top: 1px; }
 
     /* ── API row ───────────────────────────────────────────────────────── */
     .api-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
@@ -318,17 +317,20 @@
 <body>
 
   <div class="header">
-    <div class="header-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
-        <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/>
-        <line x1="3" y1="10" x2="21" y2="10"/>
+    <div class="header-icon" style="background:none; padding:0;">
+      <svg width="32" height="32" viewBox="100 120 830 740" xmlns="http://www.w3.org/2000/svg">
+        <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6z" fill="var(--brand)"/>
+        <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6zm-150 218-1 1-7 49-19 125-16 108-15 102-1 7v10l3 11 6 8 8 7 12 5 4 1h431l8-4 6-7 2-4 7-48 6-17 8-13 9-10 8-8 14-9 12-6 18-5 16-2h63l10-3 6-5 4-8 13-92 13-90 14-98v-5z" fill="#fff"/>
+        <path transform="translate(345,371)" d="m0 0h255l28 3 23 4 26 7 21 8 19 10 16 12 7 6 9 11 6 10 5 12 2 8v24l-4 16-8 16-6 9-12 14-14 12-18 12-23 12-23 9-31 9-26 5-23 3-31 2h-157l-2 9-16 49-13 38-7 21h-127l3-9 10-29 13-37 15-43 13-37 34-96 15-42 19-54z" fill="#fff"/>
+        <path transform="translate(267,220)" d="m0 0h48l1 2-4 27v9l4 10 9 8 9 3h16l12-4 8-6 6-7 3-7 5-34 1-1h141l142 1-1 13-2 14v11l3 8 5 6 9 5 9 2 13-1 11-4 8-6 6-7 4-11 4-30 1-1h40l47 1 12 4 9 6 7 8 4 8 1 3v17l-7 49-1 2h-642l3-22 6-38 4-10 8-11 11-9 13-6z" fill="var(--brand)"/>
+        <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-5 35-5 2-4 30-4 11-9 10-10 6-13 3h-7l-11-3-9-6-6-9-1-4v-11l4-27h-283l-5 34-5 10-8 8-10 5-7 2h-16l-10-4-8-7-4-8-1-3v-9l4-28-2-3 5-28h-42v-1h45l1-14 3-20 6-12 8-8 12-6z" fill="#fff"/>
+        <path transform="translate(518,399)" d="m0 0h29l10 10 8 7 12 12 7 8 12 13 9 11 3 3v2h25l23 2 20 4 9 4 6 4 3 4-1 5-6 5-11 5-18 4-21 2-33 1-13 12-11 9-13 11-14 11-16 13-15 11-2 1h-27l6-8 12-15 14-19 14-20 5-8h-11l-62-5-20 15-10 7-3 2h-25l6-8 12-17 9-13-1-5-13-30-2-6h23l6 5 5 5 12 13 3 3 26-1 51-3-9-22-8-16-10-19z" fill="var(--brand)"/>
+        <path transform="translate(888,236)" d="m0 0 3 4 5 11 2 7v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-2-5 8 6 11 6 12 5 10 2h448l12-3 16-8 54-42 13-10 11-9 18-14 28-22 13-10 16-13 13-10 11-9 10-15 3-8 12-83 24-170 11-75 5-38 1-6v-13z" fill="rgba(255,255,255,0.3)"/>
       </svg>
     </div>
     <div>
-      <div class="header-title">Travel &amp; Events Shortcut</div>
-      <div class="header-sub">Drop files, paste, or scan the page</div>
+      <div class="header-title">Pluck</div>
+      <div class="header-sub">Travel &amp; Events</div>
     </div>
   </div>
 

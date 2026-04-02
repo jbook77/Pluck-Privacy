@@ -250,10 +250,24 @@ async function renderSettingsBody() {
     html += '<div class="settings-section-label" style="margin-top:10px">Other Calendars</div>'
       + other.map(cal => renderAliasCard(cal, aliases[cal.id] || [], hiddenIds)).join('');
   }
+  // Gmail button toggle
+  const gmailEnabled = await new Promise(r => chrome.storage.local.get('gmail_button_enabled', d => r(d.gmail_button_enabled !== false)));
+  const gmailToggleStyle = gmailEnabled ? 'background:var(--accent,#3ecf8e)' : 'background:#444';
+  html += '<div class="settings-section-label" style="margin-top:14px">Gmail Integration</div>'
+    + '<div class="gmail-toggle-row">'
+    + '<span class="gmail-toggle-label">Show "Send to Pluck" button in Gmail</span>'
+    + '<button class="cal-vis-toggle ' + (gmailEnabled ? 'on' : 'off') + '" id="gmail-btn-toggle" style="' + gmailToggleStyle + '" title="' + (gmailEnabled ? 'Disable' : 'Enable') + ' Gmail button"></button>'
+    + '</div>';
+
   html += '<div class="settings-section-label" style="margin-top:14px">Gemini API</div>'
     + '<button class="text-btn" id="change-key-btn" style="font-size:12px">Change API key</button>';
   body.innerHTML = html;
   wireAliasEvents(aliases, hiddenIds);
+  document.getElementById('gmail-btn-toggle').addEventListener('click', async () => {
+    const cur = await new Promise(r => chrome.storage.local.get('gmail_button_enabled', d => r(d.gmail_button_enabled !== false)));
+    await chrome.storage.local.set({ gmail_button_enabled: !cur });
+    renderSettingsBody();
+  });
   document.getElementById('change-key-btn').addEventListener('click', showApiRow);
 }
 

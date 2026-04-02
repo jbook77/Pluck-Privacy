@@ -25,6 +25,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 if (location.hostname === 'mail.google.com') {
 
   let _lastInjectedMsgId = null;
+  let _gmailButtonEnabled = true; // default on
 
   function _findOpenEmailWithAttachments() {
     // Gmail marks each expanded message with data-message-id.
@@ -97,19 +98,41 @@ if (location.hostname === 'mail.google.com') {
     }
   }
 
+  // Read initial setting
+  chrome.storage.local.get('gmail_button_enabled', r => {
+    _gmailButtonEnabled = r.gmail_button_enabled !== false; // default true
+    if (!_gmailButtonEnabled) _removeButton();
+  });
+
+  // React to setting changes in real time
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.gmail_button_enabled) {
+      _gmailButtonEnabled = changes.gmail_button_enabled.newValue !== false;
+      if (!_gmailButtonEnabled) {
+        _removeButton();
+      }
+      // If re-enabled, the next observer tick will inject it
+    }
+  });
+
+  function _removeButton() {
+    const old = document.getElementById('pluck-gmail-wrap');
+    if (old) old.remove();
+    _lastInjectedMsgId = null;
+  }
+
   // Watch for Gmail SPA navigation and email opens (throttled to avoid perf issues)
   let _gmailScanTimer = null;
   const _gmailObserver = new MutationObserver(() => {
     if (_gmailScanTimer) return;
     _gmailScanTimer = setTimeout(() => {
       _gmailScanTimer = null;
+      if (!_gmailButtonEnabled) return;
       const result = _findOpenEmailWithAttachments();
       if (result) {
         _injectPluckButton(result.messageId, result.attachArea);
       } else if (_lastInjectedMsgId) {
-        const old = document.getElementById('pluck-gmail-wrap');
-        if (old) old.remove();
-        _lastInjectedMsgId = null;
+        _removeButton();
       }
     }, 300);
   });

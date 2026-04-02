@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pluck — Light Theme Options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #0a0a0f;
+      margin: 0;
+      padding: 40px;
+      font-family: 'Poppins', -apple-system, sans-serif;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #6a6a80;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 11px;
+      font-weight: 300;
+      color: #3a3a4a;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      justify-content: center;
+    }
+    .option-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #1D1DA4;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .option-desc {
+      font-size: 10px;
+      font-weight: 300;
+      color: #6a6a80;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .mini-frame {
+      width: 440px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+      padding: 20px;
+    }
+
+    /* Shared component styles for light */
+    .header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+    .header-icon { width: 32px; height: 32px; background: #1D1DA4; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; flex-shrink: 0; }
+    .header-title { font-size: 16px; font-weight: 700; color: #111128; }
+    .header-sub { font-size: 11px; font-weight: 300; color: rgba(0,0,0,0.35); margin-top: 1px; }
+
+    .drop-zone { border: 1.5px dashed rgba(0,0,0,0.12); border-radius: 10px; padding: 18px 16px; text-align: center; margin-bottom: 10px; }
+    .upload-label { font-size: 13px; font-weight: 500; color: rgba(0,0,0,0.4); }
+    .upload-sub { font-size: 11px; font-weight: 300; color: rgba(0,0,0,0.2); margin-top: 4px; }
+
+    .btn-gold { width: 100%; padding: 10px; font-size: 14px; font-weight: 600; background: #C8960A; color: #fff; border: none; border-radius: 8px; margin-top: 8px; font-family: inherit; }
+    .btn-ghost { width: 100%; padding: 9px; font-size: 13px; font-weight: 600; background: transparent; color: rgba(0,0,0,0.35); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; margin-top: 8px; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+    .card { border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: rgba(0,0,0,0.04); }
+    .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .card-title { font-weight: 600; font-size: 13px; flex: 1; color: #111128; }
+    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background: rgba(29,29,164,0.1); color: #1D1DA4; }
+    .field { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; }
+    .field-l { font-weight: 300; color: rgba(0,0,0,0.35); }
+    .field-v { font-weight: 500; color: rgba(0,0,0,0.6); }
+
+    .scan-hint { font-size: 11px; font-weight: 300; color: rgba(0,0,0,0.18); text-align: center; margin-top: 5px; }
+
+    .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06); }
+    .footer-link { font-size: 10px; font-weight: 300; color: rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.1); border-radius: 5px; padding: 3px 8px; }
+    .footer-right { font-size: 10px; font-weight: 300; color: rgba(0,0,0,0.2); }
+
+    /* ── Option backgrounds ──────────────────────────────────────── */
+
+    /* A: Original warm cream */
+    .bg-a { background: radial-gradient(circle at 95% 5%, #4040b8 0%, #8888c8 12%, #b8b8d0 25%, #e4e0d8 40%, #e4e0d8 100%); }
+
+    /* B: Split the difference — warm with a hint of lavender */
+    .bg-b { background: radial-gradient(circle at 95% 5%, #4040b8 0%, #8888c8 12%, #b8b8d0 25%, #e3e0e1 40%, #e3e0e1 100%); }
+
+    /* C: Original indigo-tinted */
+    .bg-c { background: radial-gradient(circle at 95% 5%, #4040b8 0%, #8888c8 12%, #b8b8d0 25%, #e2e0ea 40%, #e2e0ea 100%); }
+  </style>
+</head>
+<body>
+
+  <h1>Light Theme — Toning Down the White</h1>
+  <div class="subtitle">Same layout, three approaches to soften the brightness</div>
+
+  <div class="options">
+
+    <!-- Option A -->
+    <div>
+      <div class="option-label">A — Warmer Cream Base</div>
+      <div class="option-desc">Base #e4e0d8 — warm, less stark, champagne-tinted</div>
+      <div class="mini-frame bg-a">
+        <div class="header">
+          <div class="header-icon">P</div>
+          <div><div class="header-title">Pluck</div><div class="header-sub">Travel & Events</div></div>
+        </div>
+        <div class="drop-zone">
+          <div class="upload-label">Drop any file — PDF, email, image</div>
+          <div class="upload-sub">Ctrl+V / Cmd+V to paste</div>
+        </div>
+        <button class="btn-gold">Extract calendar events</button>
+        <button class="btn-ghost">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan this page
+        </button>
+        <div class="scan-hint">or upload a picture above</div>
+        <div class="card">
+          <div class="card-top"><span class="card-title">Fly Newark to Miami (AA 1692)</span><span class="tag">FLIGHT</span></div>
+          <div class="field"><span class="field-l">Route</span><span class="field-v">EWR - MIA</span></div>
+          <div class="field"><span class="field-l">Depart</span><span class="field-v">Apr 3 at 8:15 AM</span></div>
+        </div>
+        <div class="footer">
+          <span class="footer-link">Connect Google</span>
+          <span class="footer-right">Dark</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div>
+      <div class="option-label">B — Warm Lavender (A+B blend)</div>
+      <div class="option-desc">Base #e3e0e1 — warm cream with a touch of lavender</div>
+      <div class="mini-frame bg-b">
+        <div class="header">
+          <div class="header-icon">P</div>
+          <div><div class="header-title">Pluck</div><div class="header-sub">Travel & Events</div></div>
+        </div>
+        <div class="drop-zone">
+          <div class="upload-label">Drop any file — PDF, email, image</div>
+          <div class="upload-sub">Ctrl+V / Cmd+V to paste</div>
+        </div>
+        <button class="btn-gold">Extract calendar events</button>
+        <button class="btn-ghost">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan this page
+        </button>
+        <div class="scan-hint">or upload a picture above</div>
+        <div class="card">
+          <div class="card-top"><span class="card-title">Fly Newark to Miami (AA 1692)</span><span class="tag">FLIGHT</span></div>
+          <div class="field"><span class="field-l">Route</span><span class="field-v">EWR - MIA</span></div>
+          <div class="field"><span class="field-l">Depart</span><span class="field-v">Apr 3 at 8:15 AM</span></div>
+        </div>
+        <div class="footer">
+          <span class="footer-link">Connect Google</span>
+          <span class="footer-right">Dark</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option C -->
+    <div>
+      <div class="option-label">C — Original Indigo-Tinted</div>
+      <div class="option-desc">Base #e2e0ea — cooler, lavender undertone</div>
+      <div class="mini-frame bg-c">
+        <div class="header">
+          <div class="header-icon">P</div>
+          <div><div class="header-title">Pluck</div><div class="header-sub">Travel & Events</div></div>
+        </div>
+        <div class="drop-zone">
+          <div class="upload-label">Drop any file — PDF, email, image</div>
+          <div class="upload-sub">Ctrl+V / Cmd+V to paste</div>
+        </div>
+        <button class="btn-gold">Extract calendar events</button>
+        <button class="btn-ghost">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan this page
+        </button>
+        <div class="scan-hint">or upload a picture above</div>
+        <div class="card">
+          <div class="card-top"><span class="card-title">Fly Newark to Miami (AA 1692)</span><span class="tag">FLIGHT</span></div>
+          <div class="field"><span class="field-l">Route</span><span class="field-v">EWR - MIA</span></div>
+          <div class="field"><span class="field-l">Depart</span><span class="field-v">Apr 3 at 8:15 AM</span></div>
+        </div>
+        <div class="footer">
+          <span class="footer-link">Connect Google</span>
+          <span class="footer-right">Dark</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

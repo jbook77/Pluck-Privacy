@@ -259,7 +259,7 @@ async function renderSettingsBody() {
   }
   // Gmail button toggle
   const gmailEnabled = await new Promise(r => chrome.storage.local.get('gmail_button_enabled', d => r(d.gmail_button_enabled !== false)));
-  const gmailToggleStyle = gmailEnabled ? 'background:var(--accent,#3ecf8e)' : 'background:#444';
+  const gmailToggleStyle = gmailEnabled ? 'background:var(--brand)' : 'background:var(--border)';
   html += '<div class="settings-section-label" style="margin-top:14px">Gmail Integration</div>'
     + '<div class="gmail-toggle-row">'
     + '<span class="gmail-toggle-label">Show "Send to Pluck" button in Gmail</span>'
@@ -458,7 +458,7 @@ function renderFileList() {
   list.innerHTML = loadedFiles.map((f, i) => {
     const thumb = f.previewSrc
       ? '<img src="' + f.previewSrc + '" />'
-      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3ecf8e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
     return '<div class="file-item">' + thumb
       + '<span class="file-item-name">' + escHtml(f.name) + '</span>'
       + '<button class="file-remove" data-i="' + i + '">&#x2715;</button></div>';
@@ -1056,7 +1056,7 @@ function clearResults() { document.getElementById('results').innerHTML = ''; set
 function setStatus(msg, type) {
   const el = document.getElementById('status');
   if (!msg) { el.innerHTML = ''; return; }
-  const color = type === 'error' ? '#f87171' : type === 'success' ? '#3ecf8e' : '#555';
+  const color = type === 'error' ? 'var(--err-txt)' : type === 'success' ? 'var(--accent)' : 'var(--text3)';
   el.innerHTML = (type === 'loading' ? '<div class="spinner"></div>' : '') + '<span style="color:' + color + '">' + escHtml(msg) + '</span>';
 }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

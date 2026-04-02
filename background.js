@@ -142,7 +142,7 @@ async function _fetchGmailAttachments(messageId) {
 
   // Badge the icon so user knows files are waiting
   await chrome.action.setBadgeText({ text: '!' });
-  await chrome.action.setBadgeBackgroundColor({ color: '#3ecf8e' });
+  await chrome.action.setBadgeBackgroundColor({ color: '#D4A830' });
 
   // Notify popup if it's already open (ignore error if it's not)
   chrome.runtime.sendMessage({ type: 'GMAIL_FILES_READY' }, () => {

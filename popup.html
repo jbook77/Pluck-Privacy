@@ -150,11 +150,11 @@
     /* ── Drop zone ─────────────────────────────────────────────────────── */
     .drop-zone { border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px 16px; text-align: center; transition: background 0.15s, border-color 0.15s; cursor: pointer; }
     .drop-zone.drag-over { background: var(--bg3); border-color: #5aabf7; }
-    .drop-zone.has-files { border-color: #3ecf8e; border-style: solid; }
+    .drop-zone.has-files { border-color: var(--accent); border-style: solid; }
     .drop-zone.paste-flash { border-color: #5aabf7; border-style: solid; animation: pulse 0.4s ease-out; }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(90,171,247,0.35); } 100% { box-shadow: 0 0 0 8px rgba(90,171,247,0); } }
     .upload-icon { margin-bottom: 8px; color: var(--text4); transition: color 0.15s; }
-    .drop-zone.has-files .upload-icon { color: #3ecf8e; }
+    .drop-zone.has-files .upload-icon { color: var(--accent); }
     .upload-label { font-size: 13px; color: var(--text3); }
     .upload-sublabel { font-size: 11px; color: var(--text4); margin-top: 5px; }
     #file-input { display: none; }
@@ -170,8 +170,8 @@
     .file-remove:hover { color: #f87171; }
 
     /* ── Buttons ───────────────────────────────────────────────────────── */
-    .btn-primary { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: var(--btn-primary-bg); color: var(--btn-primary-txt); border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; margin-top: 10px; }
-    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: var(--btn-primary-bg); color: var(--btn-primary-txt); border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-top: 10px; font-family: inherit; }
+    .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; }
 
     .btn-scan { width: 100%; padding: 10px; font-size: 13px; font-weight: 500; background: var(--btn-scan-bg); color: var(--btn-scan-txt); border: 1px solid var(--btn-scan-border); border-radius: 8px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 7px; }
@@ -212,9 +212,9 @@
 
     /* ── Detected event cards ──────────────────────────────────────────── */
     .detected-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: var(--card-bg); overflow: hidden; transition: border-color 0.15s; }
-    .detected-card.selected { border-color: #3ecf8e; }
+    .detected-card.selected { border-color: var(--accent); }
     .detected-card-header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
-    .detect-checkbox { width: 16px; height: 16px; accent-color: #3ecf8e; flex-shrink: 0; cursor: pointer; }
+    .detect-checkbox { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
     .detected-title { font-weight: 600; font-size: 13px; flex: 1; color: var(--text); }
     .detected-meta  { font-size: 11px; color: var(--text3); }
     .event-type-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }

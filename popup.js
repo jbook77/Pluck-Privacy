@@ -17,10 +17,10 @@ const DETECT_PROMPT = `You are an event extractor. Today is ${TODAY}. Extract AL
 
 Format:
 {"events":[{
-  "type": "dinner | meeting | appointment | event | other",
+  "type": "dinner | party | pickup | meeting | grooming | styling | performance | photo | interview | appointment | event | other",
   "title": "concise natural title e.g. Dinner at Soho House or Zoom - Copper Cup x Body Brokers",
   "startISO": "ISO8601 with tz offset. Infer tz from location (NY spring=-04:00, LA spring=-07:00). If only day-of-week, use next upcoming date from today.",
-  "endISO": "ISO8601. Infer if missing: dinner=2hr, haircut/barber=45min, meeting=1hr, appointment=1hr",
+  "endISO": "ISO8601. Infer if missing: dinner=2hr, party=3hr, pickup=1hr, meeting=1hr, grooming=45min, styling=1.5hr, performance=2hr, photo=3hr, interview=1hr, appointment=1hr",
   "location": "full address, Zoom link, or venue name",
   "notes": "confirmation number, party size, zoom passcode, provider name, special notes. One per line.",
   "confidence": "high | medium | low"
@@ -33,7 +33,14 @@ Rules:
 - Hotel check-in/out = one event
 - Stated time ranges like 1PM-5PM: use exactly
 - If nothing found: {"events":[]}
-- Do NOT invent details`;
+- Do NOT invent details
+- GROOMING: haircuts, barber, nails, facials, skincare, spa treatments
+- STYLING: wardrobe fittings, getting dressed, outfit prep, fashion styling sessions
+- PERFORMANCE: concerts, live shows, music performances, sets, soundchecks
+- PHOTO: photo shoots, press photos, campaign shoots, headshots
+- INTERVIEW: magazine interviews, press interviews, podcast guest appearances, Q&As
+- PARTY: after-parties, galas, celebrations, receptions, launch events
+- PICKUP: car service, driver, airport transfer, ride to/from venue`;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

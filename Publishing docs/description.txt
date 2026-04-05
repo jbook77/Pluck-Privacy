@@ -30,4 +30,3 @@ PRIVACY
 • Your data is processed by Google's Gemini AI and stays between you and Google
 • No data is stored on external servers
 • No analytics or tracking
-• You provide your own Gemini API key

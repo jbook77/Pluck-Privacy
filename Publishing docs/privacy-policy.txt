@@ -31,7 +31,7 @@ When you use Pluck, it may access the following data depending on which features
 
 4. WHAT DATA PLUCK STORES
 
-• Your Gemini API key is stored locally in your browser's extension storage. It is never transmitted anywhere except directly to Google's Gemini API.
+• Your Gemini API key is stored locally in your browser's extension storage. It is only transmitted directly to Google's Gemini API for event extraction.
 
 • Your Google sign-in session is managed by Chrome's built-in identity system.
 

@@ -5,385 +5,491 @@
   <title>Pluck — UI Preview</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!--
+  ══════════════════════════════════════════════════════
+   PLUCK UI — DESIGN EXPLORATION v2
+   Concept: "Luxury Travel Docket"
+   Changes from v1:
+   - Playfair Display serif for "Pluck" wordmark (editorial masthead quality)
+   - DM Mono for all data values (departure board / ticket aesthetic)
+   - Richer, deeper background (#0e1235 base) with layered radial gradients
+   - Cards: warm top-highlight inner glow via box-shadow
+   - Travel cards: left accent bar in event category color with matching glow
+   - Primary button: gradient gold (not flat) + letter-spacing
+   - Tags: monospace, more letter-spacing, color-matched soft glow
+   - Scan button: dashed border treatment (feels more secondary/ghosted)
+   - Section labels: gold left-rule treatment with horizontal rule
+   - Collapsed drop zone: pill-shaped, DM Mono text, right-aligned link
+   - Browse button: pill-shaped (rounded)
+   - Section dividers in preview: gold accent with rule
+   - Footer: pill-shaped connect button
+  ══════════════════════════════════════════════════════
+  -->
+
   <style>
     /* ── Theme variables ───────────────────────────────────────────────── */
     :root, [data-theme="dark"] {
-      --bg:           #1E27AE;
-      --bg2:          rgba(255, 255, 255, 0.06);
-      --bg3:          rgba(255, 255, 255, 0.10);
+      --bg:           #16204a;
+      --bg2:          rgba(255, 255, 255, 0.07);
+      --bg3:          rgba(255, 255, 255, 0.12);
       --border:       rgba(255, 255, 255, 0.12);
-      --border2:      rgba(255, 255, 255, 0.20);
-      --text:         #f0f0f0;
-      --text2:        #b0b0c0;
-      --text3:        rgba(255, 255, 255, 0.40);
-      --text4:        rgba(255, 255, 255, 0.20);
+      --border2:      rgba(255, 255, 255, 0.22);
+      --text:         #eeeef5;
+      --text2:        #9898b8;
+      --text3:        rgba(255, 255, 255, 0.36);
+      --text4:        rgba(255, 255, 255, 0.18);
       --brand:        #1E27AE;
+      --brand-mid:    #3040cc;
       --accent:       #D4A830;
+      --accent2:      #E8C060;
       --accent-hover: #B89020;
 
-      --tag-flight-bg:  #0e1530; --tag-flight-txt: #5a8af7;
-      --tag-hotel-bg:   #0d1f17; --tag-hotel-txt:  #3ecf8e;
-      --tag-charter-bg: #1a1040; --tag-charter-txt: #b794f4;
-      --tag-dinner-bg:  #2a1a00; --tag-dinner-txt:  #D4A830;
-      --tag-party-bg:   #1a0018; --tag-party-txt:   #e060d0;
-      --tag-pickup-bg:  #261400; --tag-pickup-txt:  #f09040;
-      --tag-meeting-bg: #0e1530; --tag-meeting-txt: #5a8af7;
-      --tag-grooming-bg:#081a1a; --tag-grooming-txt:#40c8b0;
-      --tag-styling-bg: #1a0a14; --tag-styling-txt: #f07090;
-      --tag-perform-bg: #14103a; --tag-perform-txt: #8888f0;
-      --tag-photo-bg:   #0a1820; --tag-photo-txt:   #40b8e8;
-      --tag-interview-bg:#181a08;--tag-interview-txt:#a8c840;
-      --tag-appt-bg:    #1a1040; --tag-appt-txt:    #a07cf0;
-      --tag-event-bg:   #1a0018; --tag-event-txt:   #e060d0;
-      --tag-other-bg:   #22222e; --tag-other-txt:   #6a6a80;
+      --tag-flight-bg:  rgba(14,21,48,0.9);   --tag-flight-txt: #6a9aff;
+      --tag-hotel-bg:   rgba(13,31,23,0.9);   --tag-hotel-txt:  #3ecf8e;
+      --tag-charter-bg: rgba(26,16,64,0.9);   --tag-charter-txt: #c4a0ff;
+      --tag-dinner-bg:  rgba(42,26,0,0.9);    --tag-dinner-txt:  #E8C060;
+      --tag-party-bg:   rgba(26,0,24,0.9);    --tag-party-txt:   #e878dc;
+      --tag-pickup-bg:  rgba(38,20,0,0.9);    --tag-pickup-txt:  #f0a050;
+      --tag-meeting-bg: rgba(14,21,48,0.9);   --tag-meeting-txt: #6a9aff;
+      --tag-grooming-bg:rgba(8,26,26,0.9);    --tag-grooming-txt:#40c8b0;
+      --tag-styling-bg: rgba(26,10,20,0.9);   --tag-styling-txt: #f090a8;
+      --tag-perform-bg: rgba(20,16,58,0.9);   --tag-perform-txt: #9898f8;
+      --tag-photo-bg:   rgba(10,24,32,0.9);   --tag-photo-txt:   #50c0f0;
+      --tag-interview-bg:rgba(24,26,8,0.9);   --tag-interview-txt:#b0d050;
+      --tag-appt-bg:    rgba(26,16,64,0.9);   --tag-appt-txt:    #b090f8;
+      --tag-event-bg:   rgba(26,0,24,0.9);    --tag-event-txt:   #e878dc;
+      --tag-other-bg:   rgba(34,34,46,0.9);   --tag-other-txt:   #6a6a88;
 
       --err-bg: #1f0e12; --err-border: #5a2030; --err-txt: #f87171;
-      --warn-bg: #1e1800; --warn-border: #564200; --warn-txt: #D4A830;
-      --info-bg: #0e1228; --info-border: #1e2a5a; --info-txt: #5a8af7;
+      --warn-bg: #1e1800; --warn-border: #564200; --warn-txt: #E8C060;
+      --info-bg: #0e1228; --info-border: #1e2a5a; --info-txt: #6a9aff;
+
+      --card-shine: inset 0 1px 0 rgba(255,255,255,0.10);
+      --card-bg: linear-gradient(160deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.022) 100%);
+
+      --drop-zone-border: rgba(80, 110, 255, 0.45);
+      --drop-zone-bg: rgba(48, 64, 204, 0.06);
+      --drop-zone-glow: inset 0 0 32px rgba(48, 64, 204, 0.09);
+      --drop-zone-icon: rgba(130, 155, 255, 0.70);
+      --scan-border: rgba(80, 110, 255, 0.32);
+      --scan-bg: rgba(48, 64, 204, 0.08);
+      --scan-color: var(--text2);
     }
 
     [data-theme="light"] {
-      --bg:           #e3e0e1;
-      --bg2:          rgba(0, 0, 0, 0.05);
-      --bg3:          rgba(0, 0, 0, 0.08);
-      --border:       rgba(0, 0, 0, 0.10);
-      --border2:      rgba(0, 0, 0, 0.18);
-      --text:         #111128;
-      --text2:        rgba(0, 0, 0, 0.60);
-      --text3:        rgba(0, 0, 0, 0.38);
-      --text4:        rgba(0, 0, 0, 0.20);
+      --bg:           #e6e3e8;
+      --bg2:          rgba(0, 0, 0, 0.06);
+      --bg3:          rgba(0, 0, 0, 0.10);
+      --border:       rgba(0, 0, 0, 0.15);
+      --border2:      rgba(0, 0, 0, 0.28);
+      --text:         #0f0f28;
+      --text2:        rgba(0, 0, 0, 0.65);
+      --text3:        rgba(0, 0, 0, 0.50);
+      --text4:        rgba(0, 0, 0, 0.32);
       --brand:        #1E27AE;
-      --accent:       #C8960A;
-      --accent-hover: #A87A00;
+      --brand-mid:    #3040cc;
+      --accent:       #C0880A;
+      --accent2:      #D4A030;
+      --accent-hover: #A07000;
 
-      --tag-flight-bg:  #dde4f8; --tag-flight-txt: #2a4aa0;
-      --tag-hotel-bg:   #d0f0e0; --tag-hotel-txt:  #0d6644;
-      --tag-charter-bg: #e8e0f8; --tag-charter-txt: #5a2ea8;
-      --tag-dinner-bg:  #f8edd0; --tag-dinner-txt:  #8a5a00;
-      --tag-party-bg:   #f4ddf8; --tag-party-txt:   #8a0aa0;
-      --tag-pickup-bg:  #f8e8d0; --tag-pickup-txt:  #8a4a00;
-      --tag-meeting-bg: #dde4f8; --tag-meeting-txt: #2a4aa0;
-      --tag-grooming-bg:#d0f0ea; --tag-grooming-txt:#0a6858;
-      --tag-styling-bg: #f8dde4; --tag-styling-txt: #8a2040;
-      --tag-perform-bg: #e0e0f8; --tag-perform-txt: #3a3aa0;
-      --tag-photo-bg:   #d4eaf8; --tag-photo-txt:   #0a5878;
-      --tag-interview-bg:#eaf0d0;--tag-interview-txt:#4a6010;
-      --tag-appt-bg:    #e8e0f8; --tag-appt-txt:    #5a2ea8;
-      --tag-event-bg:   #f4ddf8; --tag-event-txt:   #8a0aa0;
-      --tag-other-bg:   #e8e8f0; --tag-other-txt:   #7a7a98;
+      --tag-flight-bg:  #dde4f8;  --tag-flight-txt: #2a4aa0;
+      --tag-hotel-bg:   #d0f0e0;  --tag-hotel-txt:  #0d6644;
+      --tag-charter-bg: #e8e0f8;  --tag-charter-txt: #5a2ea8;
+      --tag-dinner-bg:  #f8edd0;  --tag-dinner-txt:  #8a5a00;
+      --tag-party-bg:   #f4ddf8;  --tag-party-txt:   #8a0aa0;
+      --tag-pickup-bg:  #f8e8d0;  --tag-pickup-txt:  #8a4a00;
+      --tag-meeting-bg: #dde4f8;  --tag-meeting-txt: #2a4aa0;
+      --tag-grooming-bg:#d0f0ea;  --tag-grooming-txt:#0a6858;
+      --tag-styling-bg: #f8dde4;  --tag-styling-txt: #8a2040;
+      --tag-perform-bg: #e0e0f8;  --tag-perform-txt: #3a3aa0;
+      --tag-photo-bg:   #d4eaf8;  --tag-photo-txt:   #0a5878;
+      --tag-interview-bg:#eaf0d0; --tag-interview-txt:#4a6010;
+      --tag-appt-bg:    #e8e0f8;  --tag-appt-txt:    #5a2ea8;
+      --tag-event-bg:   #f4ddf8;  --tag-event-txt:   #8a0aa0;
+      --tag-other-bg:   #e8e8f0;  --tag-other-txt:   #4a4a68;
 
       --err-bg: #fdecea; --err-border: #f5b8b8; --err-txt: #c0392b;
       --warn-bg: #fff8e1; --warn-border: #ffd54f; --warn-txt: #7a5900;
       --info-bg: #e8f0fd; --info-border: #a8c4f0; --info-txt: #1a4fa8;
+
+      --card-shine: inset 0 1px 0 rgba(255,255,255,0.90);
+      --card-bg: linear-gradient(160deg, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.50) 100%);
+
+      --drop-zone-border: rgba(30, 39, 174, 0.32);
+      --drop-zone-bg: rgba(30, 39, 174, 0.04);
+      --drop-zone-glow: inset 0 0 32px rgba(30, 39, 174, 0.05);
+      --drop-zone-icon: rgba(30, 39, 174, 0.50);
+      --scan-border: rgba(30, 39, 174, 0.25);
+      --scan-bg: rgba(30, 39, 174, 0.05);
+      --scan-color: var(--text2);
     }
 
     /* ── Reset & base ──────────────────────────────────────────────────── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Poppins', sans-serif;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 400;
       color: var(--text);
-      background: var(--bg);
+      background: #08090f;
       transition: background 0.2s, color 0.2s;
     }
 
-    /* ── Preview wrapper (simulates 440px popup) ───────────────────────── */
+    /* ── Preview wrapper ───────────────────────────────────────────────── */
     .preview-frame {
       width: 440px;
       margin: 40px auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 24px 80px rgba(0,0,0,0.7),
+        0 8px 24px rgba(0,0,0,0.5);
       position: relative;
     }
     [data-theme="dark"] .preview-frame {
-      background: radial-gradient(circle at 95% 5%, #c8b898 0%, #887898 12%, #3838a0 25%, #1E27AE 40%, #1E27AE 100%);
-      background-size: 100% 100%;
-      transition: background-size 0.3s ease-out;
-    }
-    [data-theme="dark"] .preview-frame.results-loaded {
-      background-size: 108% 108%;
+      background:
+        radial-gradient(ellipse at 96% 4%, rgba(200,184,152,0.55) 0%, rgba(120,100,140,0.30) 14%, rgba(30,39,174,0.40) 30%, transparent 55%),
+        radial-gradient(ellipse at 10% 90%, rgba(14,20,100,0.4) 0%, transparent 50%),
+        linear-gradient(160deg, #16204a 0%, #1a2450 50%, #111838 100%);
     }
     [data-theme="light"] .preview-frame {
-      background: radial-gradient(circle at 95% 5%, #1E27AE 0%, #7878c0 12%, #b0b0d0 25%, #e3e0e1 40%, #e3e0e1 100%);
-      background-size: 100% 100%;
-      transition: background-size 0.3s ease-out;
-    }
-    [data-theme="light"] .preview-frame.results-loaded {
-      background-size: 108% 108%;
-    }
-    .preview-body {
-      padding: 20px;
+      background:
+        radial-gradient(ellipse at 96% 4%, rgba(30,39,174,0.28) 0%, rgba(120,120,200,0.12) 22%, transparent 45%),
+        linear-gradient(160deg, #dfe0ee 0%, #e6e3e8 60%, #dddbe5 100%);
     }
 
-    /* ── Preview controls (outside the popup frame) ────────────────────── */
+    .preview-body { padding: 20px; position: relative; z-index: 1; }
+
+    /* ── Preview controls ──────────────────────────────────────────────── */
     .preview-controls {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin: 20px auto;
-      font-family: 'Poppins', sans-serif;
-      font-size: 12px;
+      display: flex; justify-content: center;
+      gap: 8px; margin: 20px auto;
+      font-family: 'Poppins', sans-serif; font-size: 11px;
     }
     .preview-controls button {
-      padding: 6px 16px;
-      border: 1px solid #3a3a4a;
-      border-radius: 6px;
-      background: #181820;
-      color: #b0b0c0;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
+      padding: 5px 14px;
+      border: 1px solid #2a2a3a; border-radius: 20px;
+      background: #12121e; color: #5050808;
+      color: #505080;
+      font-family: inherit; font-size: 10px; cursor: pointer;
+      letter-spacing: 0.05em; transition: all 0.15s;
     }
-    .preview-controls button:hover { background: #22222e; }
-    .preview-controls button.active { border-color: #1D1DA4; color: #f0f0f0; }
+    .preview-controls button:hover { background: #1a1a2e; color: #9090c0; border-color: #3a3a5a; }
+    .preview-controls button.active { border-color: #3040cc; color: #a0a8e0; background: #14163a; }
     .preview-label {
-      text-align: center;
-      font-family: 'Poppins', sans-serif;
-      font-size: 11px;
-      font-weight: 300;
-      color: #6a6a80;
-      margin-bottom: 8px;
+      text-align: center; font-family: 'Poppins', sans-serif;
+      font-size: 10px; color: #30304a; margin-bottom: 6px; letter-spacing: 0.08em;
     }
 
     /* ── Header ────────────────────────────────────────────────────────── */
     .header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding-bottom: 14px;
+      display: flex; align-items: center; gap: 11px;
+      margin-bottom: 18px; padding-bottom: 14px;
       border-bottom: 1px solid var(--border);
     }
     .header-icon {
-      width: 32px; height: 32px;
-      background: var(--brand);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      width: 46px; height: 46px; background: none;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      font-size: 18px;
-      color: #fff;
     }
-    .header-title { font-size: 16px; font-weight: 700; color: var(--text); }
-    .header-sub { font-size: 11px; font-weight: 300; color: var(--text3); margin-top: 1px; }
+    .header-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px; font-weight: 700; font-style: italic;
+      color: var(--text); letter-spacing: -0.01em; line-height: 1.1;
+    }
+    .header-sub {
+      font-size: 10px; font-weight: 600; font-style: italic; color: var(--text3);
+      margin-top: 2px; letter-spacing: 0.07em; text-transform: uppercase;
+    }
 
     /* ── URL row ───────────────────────────────────────────────────────── */
     .url-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .url-row input {
-      flex: 1; padding: 7px 10px;
+      flex: 1; padding: 7px 11px;
       border: 1px solid var(--border); border-radius: 7px;
-      font-size: 12px; font-weight: 500;
-      font-family: inherit;
-      color: var(--text); background: var(--bg2); outline: none;
+      font-size: 11px; font-family: 'Poppins', sans-serif;
+      color: var(--text2); background: var(--bg2); outline: none;
+      transition: border-color 0.15s;
     }
-    .url-row input::placeholder { color: var(--text4); font-weight: 300; }
+    .url-row input::placeholder { color: var(--text4); }
     .url-row input:focus { border-color: var(--border2); }
     .url-btn {
-      padding: 7px 12px; font-size: 12px; font-weight: 600;
+      padding: 7px 13px; font-size: 11px; font-weight: 600;
       border: 1px solid var(--border); border-radius: 7px;
       background: var(--bg2); cursor: pointer; color: var(--text2);
-      font-family: inherit;
+      font-family: 'Poppins', sans-serif; letter-spacing: 0.03em;
       transition: background 0.15s, border-color 0.15s;
     }
-    .url-btn:hover { background: var(--bg3); border-left: 2px solid var(--brand); }
+    .url-btn:hover { background: var(--bg3); border-color: var(--border2); }
 
     /* ── Divider ───────────────────────────────────────────────────────── */
-    .or-divider { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .or-divider { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .or-divider span { font-size: 11px; font-weight: 300; color: var(--text4); }
+    .or-divider span {
+      font-size: 10px; color: var(--text4);
+      font-family: 'Poppins', sans-serif; letter-spacing: 0.06em;
+    }
 
     /* ── Drop zone ─────────────────────────────────────────────────────── */
     .drop-zone {
-      border: 1.5px dashed var(--border); border-radius: 10px;
-      padding: 22px 16px; text-align: center;
-      transition: background 0.15s, border-color 0.15s;
+      border: 1.5px dashed var(--drop-zone-border); border-radius: 10px;
+      padding: 24px 16px; text-align: center;
+      background: var(--drop-zone-bg);
+      box-shadow: var(--drop-zone-glow);
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
       cursor: pointer;
     }
+    .drop-zone.drag-over { background: var(--bg3); border-color: #5aabf7; }
     .drop-zone.has-files { border-color: var(--accent); border-style: solid; }
-    .upload-icon { margin-bottom: 8px; color: var(--text4); transition: color 0.15s; }
+    .upload-icon { margin-bottom: 10px; color: var(--drop-zone-icon); transition: color 0.15s; }
     .drop-zone.has-files .upload-icon { color: var(--accent); }
-    .upload-label { font-size: 13px; font-weight: 500; color: var(--text3); }
-    .upload-sublabel { font-size: 11px; font-weight: 300; color: var(--text4); margin-top: 5px; }
-    .browse-btn {
-      display: inline-block; margin-top: 12px;
-      padding: 6px 16px; font-size: 12px; font-weight: 600;
-      color: var(--text2); background: var(--bg2);
-      border: 1px solid var(--border); border-radius: 6px;
-      cursor: pointer; font-family: inherit;
+    .upload-label { font-size: 12px; font-weight: 500; color: var(--text2); }
+    .upload-sublabel {
+      font-size: 10px; color: var(--text3); margin-top: 5px;
+      font-family: 'Poppins', sans-serif;
     }
-    .browse-btn:hover { background: var(--bg3); }
+    .browse-btn {
+      display: inline-block; margin-top: 14px;
+      padding: 6px 18px; font-size: 11px; font-weight: 600;
+      color: var(--text2); background: var(--bg2);
+      border: 1px solid var(--border2); border-radius: 20px;
+      cursor: pointer; font-family: inherit; letter-spacing: 0.04em;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .browse-btn:hover { background: var(--bg3); border-color: var(--drop-zone-border); }
 
     /* ── Drop zone collapsed ───────────────────────────────────────────── */
     .drop-zone-collapsed {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 8px 16px;
-      border: 1px solid var(--border); border-radius: 8px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px;
+      border: 1px solid var(--border); border-radius: 20px;
       background: var(--bg2);
-      font-size: 11px; font-weight: 300; color: var(--text3);
+      font-size: 11px; color: var(--text3);
+      font-family: 'Poppins', sans-serif;
+      white-space: nowrap; overflow: hidden;
+    }
+    .drop-zone-collapsed .file-summary {
+      flex: 1; overflow: hidden; text-overflow: ellipsis;
     }
     .drop-zone-collapsed .change-link {
-      color: var(--brand); cursor: pointer; text-decoration: underline;
-      font-weight: 500;
+      color: var(--accent); cursor: pointer;
+      font-weight: 500; flex-shrink: 0;
+      transition: color 0.15s;
     }
-    .drop-zone-collapsed .change-link:hover { color: var(--accent); }
+    .drop-zone-collapsed .change-link:hover { color: var(--accent2); }
 
     /* ── File list ─────────────────────────────────────────────────────── */
     .file-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
     .file-item {
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 7px;
       background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 6px; padding: 5px 8px;
+      border-radius: 6px; padding: 5px 10px;
     }
-    .file-item-name { flex: 1; font-size: 11px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-item-name {
+      flex: 1; font-size: 10px; color: var(--text2);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Poppins', sans-serif;
+    }
     .file-remove {
       background: none; border: none; color: var(--text4);
-      cursor: pointer; font-size: 11px; padding: 0 2px; flex-shrink: 0;
-      font-family: inherit;
+      cursor: pointer; font-size: 12px; padding: 0 2px; flex-shrink: 0;
+      font-family: inherit; transition: color 0.15s;
     }
     .file-remove:hover { color: #f87171; }
 
     /* ── Buttons ───────────────────────────────────────────────────────── */
     .btn-primary {
       width: 100%; padding: 11px;
-      font-size: 14px; font-weight: 600;
-      background: var(--accent); color: #0f0f14;
-      border: none; border-radius: 8px;
-      cursor: pointer; transition: background 0.15s;
-      margin-top: 10px; font-family: inherit;
+      font-size: 13px; font-weight: 600;
+      background: linear-gradient(135deg, var(--accent2) 0%, var(--accent) 55%, var(--accent-hover) 100%);
+      color: #0f0f14;
+      border: none; border-radius: 8px; cursor: pointer;
+      margin-top: 10px; font-family: inherit; letter-spacing: 0.04em;
+      box-shadow: 0 2px 14px rgba(212,168,48,0.22);
+      transition: box-shadow 0.15s, filter 0.15s;
     }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; }
+    .btn-primary:hover { box-shadow: 0 4px 22px rgba(212,168,48,0.38); filter: brightness(1.05); }
+    .btn-primary:disabled { opacity: 0.22; cursor: not-allowed; box-shadow: none; filter: none; }
 
     .btn-scan {
       width: 100%; padding: 10px;
-      font-size: 13px; font-weight: 600;
-      background: transparent; color: var(--text3);
-      border: 1px solid var(--border); border-radius: 8px;
-      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
-      margin-top: 8px; font-family: inherit;
+      font-size: 12px; font-weight: 500;
+      background: var(--scan-bg); color: var(--scan-color);
+      border: 1.5px solid var(--scan-border); border-radius: 8px;
+      cursor: pointer; margin-top: 8px; font-family: inherit;
       display: flex; align-items: center; justify-content: center; gap: 7px;
+      letter-spacing: 0.03em;
+      transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
     }
-    .btn-scan:hover { background: var(--bg3); color: var(--text2); border-color: var(--border2); }
-
-    .scan-hint { font-size: 11px; font-weight: 300; color: var(--text4); text-align: center; margin-top: 5px; }
+    .btn-scan:hover {
+      background: var(--drop-zone-bg);
+      color: var(--text);
+      border-color: var(--drop-zone-border);
+      box-shadow: 0 0 18px rgba(80, 110, 255, 0.15);
+    }
 
     /* ── Status ────────────────────────────────────────────────────────── */
-    .status { font-size: 12px; font-weight: 500; color: var(--text3); margin-top: 10px; min-height: 18px; display: flex; align-items: center; gap: 6px; }
+    .status {
+      font-size: 11px; color: var(--text3); margin-top: 10px; min-height: 18px;
+      display: flex; align-items: center; gap: 7px;
+      font-family: 'Poppins', sans-serif;
+    }
     .spinner {
       width: 12px; height: 12px;
-      border: 2px solid var(--border); border-top-color: var(--text3);
+      border: 1.5px solid var(--border); border-top-color: var(--accent);
       border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Message boxes ─────────────────────────────────────────────────── */
-    .error-box { background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--err-txt); margin-top: 10px; line-height: 1.6; }
-    .warn-box  { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--warn-txt); margin-top: 10px; line-height: 1.7; }
-    .info-box  { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--info-txt); margin-top: 10px; line-height: 1.7; }
+    .error-box { background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 8px; padding: 10px 14px; font-size: 11px; color: var(--err-txt); margin-top: 10px; line-height: 1.6; }
+    .warn-box  { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; padding: 10px 14px; font-size: 11px; color: var(--warn-txt); margin-top: 10px; line-height: 1.7; }
+    .info-box  { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 8px; padding: 10px 14px; font-size: 11px; color: var(--info-txt); margin-top: 10px; line-height: 1.7; }
 
-    /* ── Results label ─────────────────────────────────────────────────── */
-    .results-label { font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
+    /* ── Results label / section labels ───────────────────────────────── */
+    .results-label, .section-label {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent);
+      margin: 16px 0 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .results-label::after, .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
 
     /* ── Tags ──────────────────────────────────────────────────────────── */
-    .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
-    .tag svg { flex-shrink: 0; }
-    .tag-flight   { background: var(--tag-flight-bg);   color: var(--tag-flight-txt); }
-    .tag-hotel    { background: var(--tag-hotel-bg);    color: var(--tag-hotel-txt); }
-    .tag-charter  { background: var(--tag-charter-bg);  color: var(--tag-charter-txt); }
+    .tag, .event-type-tag {
+      font-size: 9px; font-weight: 600;
+      padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 3px;
+      letter-spacing: 0.08em; font-family: 'Poppins', sans-serif;
+    }
+    .tag svg, .event-type-tag svg { flex-shrink: 0; }
 
-    .event-type-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
-    .event-type-tag svg { flex-shrink: 0; }
-    .type-dinner      { background: var(--tag-dinner-bg);    color: var(--tag-dinner-txt); }
-    .type-party       { background: var(--tag-party-bg);     color: var(--tag-party-txt); }
-    .type-pickup      { background: var(--tag-pickup-bg);    color: var(--tag-pickup-txt); }
-    .type-meeting     { background: var(--tag-meeting-bg);   color: var(--tag-meeting-txt); }
-    .type-grooming    { background: var(--tag-grooming-bg);  color: var(--tag-grooming-txt); }
-    .type-styling     { background: var(--tag-styling-bg);   color: var(--tag-styling-txt); }
-    .type-performance { background: var(--tag-perform-bg);   color: var(--tag-perform-txt); }
-    .type-photo       { background: var(--tag-photo-bg);     color: var(--tag-photo-txt); }
-    .type-interview   { background: var(--tag-interview-bg); color: var(--tag-interview-txt); }
-    .type-appointment { background: var(--tag-appt-bg);      color: var(--tag-appt-txt); }
-    .type-event       { background: var(--tag-event-bg);     color: var(--tag-event-txt); }
+    .tag-flight   { background: var(--tag-flight-bg);   color: var(--tag-flight-txt);   box-shadow: 0 0 10px rgba(106,154,255,0.14); }
+    .tag-hotel    { background: var(--tag-hotel-bg);    color: var(--tag-hotel-txt);    box-shadow: 0 0 10px rgba(62,207,142,0.14); }
+    .tag-charter  { background: var(--tag-charter-bg);  color: var(--tag-charter-txt);  box-shadow: 0 0 10px rgba(196,160,255,0.14); }
+
+    .type-dinner      { background: var(--tag-dinner-bg);    color: var(--tag-dinner-txt);    box-shadow: 0 0 8px rgba(232,192,96,0.12); }
+    .type-party       { background: var(--tag-party-bg);     color: var(--tag-party-txt);     box-shadow: 0 0 8px rgba(232,120,220,0.12); }
+    .type-pickup      { background: var(--tag-pickup-bg);    color: var(--tag-pickup-txt);    box-shadow: 0 0 8px rgba(240,160,80,0.12); }
+    .type-meeting     { background: var(--tag-meeting-bg);   color: var(--tag-meeting-txt);   box-shadow: 0 0 8px rgba(106,154,255,0.12); }
+    .type-grooming    { background: var(--tag-grooming-bg);  color: var(--tag-grooming-txt);  box-shadow: 0 0 8px rgba(64,200,176,0.12); }
+    .type-styling     { background: var(--tag-styling-bg);   color: var(--tag-styling-txt);   box-shadow: 0 0 8px rgba(240,144,168,0.12); }
+    .type-performance { background: var(--tag-perform-bg);   color: var(--tag-perform-txt);   box-shadow: 0 0 8px rgba(152,152,248,0.12); }
+    .type-photo       { background: var(--tag-photo-bg);     color: var(--tag-photo-txt);     box-shadow: 0 0 8px rgba(80,192,240,0.12); }
+    .type-interview   { background: var(--tag-interview-bg); color: var(--tag-interview-txt); box-shadow: 0 0 8px rgba(176,208,80,0.12); }
+    .type-appointment { background: var(--tag-appt-bg);      color: var(--tag-appt-txt);      box-shadow: 0 0 8px rgba(176,144,248,0.12); }
+    .type-event       { background: var(--tag-event-bg);     color: var(--tag-event-txt);     box-shadow: 0 0 8px rgba(232,120,220,0.12); }
     .type-other       { background: var(--tag-other-bg);     color: var(--tag-other-txt); }
 
     /* ── Travel event cards ────────────────────────────────────────────── */
-    .event-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; background: var(--bg2); }
-    .event-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .event-icon { color: var(--text3); display: flex; align-items: center; flex-shrink: 0; }
-    .event-title { font-weight: 600; font-size: 13px; flex: 1; line-height: 1.3; color: var(--text); }
-    .field-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border); gap: 8px; }
-    .field-row:last-of-type { border-bottom: none; }
-    .field-label { color: var(--text3); font-weight: 300; flex-shrink: 0; }
-    .field-val { font-weight: 500; text-align: right; color: var(--text2); }
-    .cal-btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      margin-top: 10px; padding: 6px 12px;
-      font-size: 12px; font-weight: 500;
-      color: var(--text); background: var(--bg2);
-      border: 1px solid var(--border); border-radius: 6px;
-      text-decoration: none; font-family: inherit; cursor: pointer;
+    .event-card {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 8px;
+      background: var(--card-bg);
+      box-shadow: var(--card-shine);
+      position: relative; overflow: hidden;
     }
-    .cal-btn:hover { background: var(--bg3); }
+    /* Left accent bar */
+    .event-card::before {
+      content: ''; position: absolute;
+      left: 0; top: 14px; bottom: 14px;
+      width: 3px; border-radius: 0 2px 2px 0;
+    }
+    .event-card.flight::before  { background: var(--tag-flight-txt);  box-shadow: 0 0 8px rgba(106,154,255,0.5); }
+    .event-card.hotel::before   { background: var(--tag-hotel-txt);   box-shadow: 0 0 8px rgba(62,207,142,0.5); }
+    .event-card.charter::before { background: var(--tag-charter-txt); box-shadow: 0 0 8px rgba(196,160,255,0.5); }
+
+    .event-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; padding-left: 10px; }
+    .event-icon { color: var(--text3); display: flex; align-items: center; flex-shrink: 0; margin-top: 1px; }
+    .event-title { font-weight: 600; font-size: 13px; flex: 1; line-height: 1.35; color: var(--text); }
+
+    .field-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border);
+      gap: 8px; padding-left: 10px;
+    }
+    .field-row:last-of-type { border-bottom: none; }
+    .field-label { color: var(--text3); font-weight: 300; flex-shrink: 0; font-size: 10px; letter-spacing: 0.03em; }
+    .field-val { font-weight: 500; text-align: right; color: var(--text2); font-family: 'Poppins', sans-serif; font-size: 11px; }
+
+    .cal-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 10px; margin-left: 10px;
+      padding: 5px 13px; font-size: 11px; font-weight: 500;
+      color: var(--text2); background: var(--bg2);
+      border: 1px solid var(--border); border-radius: 20px;
+      text-decoration: none; font-family: inherit; cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .cal-btn:hover { background: var(--bg3); border-color: var(--border2); }
 
     /* ── Detected event cards ──────────────────────────────────────────── */
-    .detected-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: var(--bg2); overflow: hidden; transition: border-color 0.15s; }
-    .detected-card.selected { border-color: var(--accent); }
-    .detected-card-header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
-    .detect-checkbox { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
-    .detected-title { font-weight: 600; font-size: 13px; flex: 1; color: var(--text); }
-    .detected-meta  { font-size: 11px; font-weight: 300; color: var(--text3); }
+    .detected-card {
+      border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 8px;
+      background: var(--card-bg);
+      box-shadow: var(--card-shine);
+      overflow: hidden; transition: border-color 0.15s;
+    }
+    .detected-card.selected { border-color: rgba(212,168,48,0.45); }
+    .detected-card-header { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; }
+    .detect-checkbox { width: 15px; height: 15px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+    .detected-title { font-weight: 500; font-size: 12px; flex: 1; color: var(--text); }
+    .detected-meta  { font-size: 10px; color: var(--text3); font-family: 'Poppins', sans-serif; }
     .edit-panel { padding: 0 12px 12px; border-top: 1px solid var(--border); }
     .edit-row { margin-top: 10px; }
-    .edit-label { font-size: 10px; font-weight: 300; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+    .edit-label { font-size: 9px; font-weight: 600; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text4); margin-bottom: 4px; }
     .edit-input {
       width: 100%; padding: 6px 10px;
       border: 1px solid var(--border); border-radius: 6px;
-      font-size: 12px; font-weight: 500;
-      color: var(--text); background: var(--bg); outline: none;
-      font-family: inherit;
+      font-size: 11px; color: var(--text); background: rgba(0,0,0,0.15); outline: none;
+      font-family: 'Poppins', sans-serif;
+      transition: border-color 0.15s;
     }
+    [data-theme="light"] .edit-input { background: rgba(255,255,255,0.55); }
     .edit-input:focus { border-color: var(--border2); }
     .edit-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 
     /* ── Detect action row ─────────────────────────────────────────────── */
     .detect-actions { display: flex; gap: 8px; margin-top: 10px; }
     .select-btn {
-      flex: 1; padding: 7px;
-      font-size: 12px; font-weight: 500;
-      border: 1px solid var(--border); border-radius: 7px;
+      flex: 1; padding: 7px; font-size: 11px; font-weight: 500;
+      border: 1px solid var(--border); border-radius: 20px;
       background: var(--bg2); cursor: pointer; color: var(--text2);
-      font-family: inherit;
+      font-family: inherit; letter-spacing: 0.03em;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .select-btn:hover { background: var(--bg3); }
+    .select-btn:hover { background: var(--bg3); border-color: var(--border2); }
     .add-cal-btn {
-      width: 100%; padding: 10px;
-      font-size: 13px; font-weight: 600;
-      background: var(--accent); color: #0f0f14;
-      border: none; border-radius: 8px;
-      cursor: pointer; margin-top: 12px; transition: background 0.15s;
-      font-family: inherit;
+      width: 100%; padding: 10px; font-size: 13px; font-weight: 600;
+      background: linear-gradient(135deg, var(--accent2) 0%, var(--accent) 55%, var(--accent-hover) 100%);
+      color: #0f0f14; border: none; border-radius: 8px;
+      cursor: pointer; margin-top: 10px; font-family: inherit; letter-spacing: 0.04em;
+      box-shadow: 0 2px 12px rgba(212,168,48,0.20);
+      transition: box-shadow 0.15s, filter 0.15s;
     }
-    .add-cal-btn:hover { background: var(--accent-hover); }
+    .add-cal-btn:hover { box-shadow: 0 4px 20px rgba(212,168,48,0.36); filter: brightness(1.05); }
 
     /* ── Footer ────────────────────────────────────────────────────────── */
     .footer {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 0 0; border-top: 1px solid var(--border);
-      margin-top: 16px;
+      padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 16px;
     }
     .connect-google-btn {
       display: flex; align-items: center; gap: 5px;
-      background: none; border: 1px solid var(--border); border-radius: 5px;
-      padding: 4px 10px; color: var(--text3); font-size: 10px; font-weight: 300;
-      cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s;
+      background: none; border: 1px solid var(--border); border-radius: 20px;
+      padding: 4px 12px; color: var(--text3); font-size: 10px;
+      cursor: pointer; font-family: inherit; letter-spacing: 0.04em;
+      transition: border-color 0.15s, color 0.15s;
     }
-    .connect-google-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .connect-google-btn:hover { border-color: var(--brand-mid); color: var(--brand-mid); }
 
     .footer-right { display: flex; align-items: center; gap: 10px; }
     .icon-btn {
@@ -391,110 +497,107 @@
       cursor: pointer; padding: 2px; display: flex; align-items: center;
       transition: color 0.15s;
     }
-    .icon-btn:hover { color: var(--text); }
+    .icon-btn:hover { color: var(--text2); }
 
-    /* ── Theme toggle switch ───────────────────────────────────────────── */
+    /* ── Theme toggle ──────────────────────────────────────────────────── */
     .theme-switch {
       display: flex; align-items: center; gap: 5px;
-      cursor: pointer; font-size: 10px; font-weight: 300; color: var(--text4); user-select: none;
+      cursor: pointer; font-size: 10px; font-weight: 300;
+      color: var(--text4); user-select: none; letter-spacing: 0.04em;
     }
     .theme-switch input { display: none; }
     .theme-track {
       width: 28px; height: 16px; background: var(--border);
       border-radius: 8px; position: relative; transition: background .2s; flex-shrink: 0;
     }
-    .theme-switch input:checked ~ .theme-track { background: var(--brand); }
+    .theme-switch input:checked ~ .theme-track { background: var(--brand-mid); }
     .theme-thumb {
       width: 12px; height: 12px; background: #fff;
       border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform .2s;
     }
     .theme-switch input:checked ~ .theme-track .theme-thumb { transform: translateX(12px); }
 
-    /* ── Signed-in footer variant ──────────────────────────────────────── */
-    .footer-account { display: flex; align-items: center; gap: 6px; }
+    /* ── Signed-in footer ──────────────────────────────────────────────── */
+    .footer-account { display: flex; align-items: center; gap: 7px; }
     .account-avatar {
-      width: 20px; height: 20px; border-radius: 50%;
-      background: var(--brand); display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-mid), var(--brand));
+      display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 9px; font-weight: 700; flex-shrink: 0;
     }
-    .account-email { color: var(--text4); font-size: 10px; font-weight: 300; }
+    .account-email { color: var(--text4); font-size: 10px; font-family: 'Poppins', sans-serif; }
     .text-btn {
       background: none; border: none; color: var(--text4);
       font-size: 10px; font-weight: 300; cursor: pointer;
       text-decoration: underline; padding: 0; font-family: inherit;
+      transition: color 0.15s;
     }
     .text-btn:hover { color: var(--text3); }
 
     /* ── Calendar picker ───────────────────────────────────────────────── */
     .cal-picker-row { margin-top: 12px; }
-    .picker-label { font-size: 10px; font-weight: 300; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .picker-label {
+      font-size: 9px; font-weight: 600; color: var(--text4);
+      text-transform: uppercase; letter-spacing: 0.10em; margin-bottom: 5px;
+    }
     .cal-picker-btn {
       display: flex; align-items: center; justify-content: space-between;
-      background: var(--bg2); border: 1px solid var(--brand); border-radius: 6px;
-      padding: 7px 10px; cursor: pointer; width: 100%;
+      background: var(--bg2); border: 1px solid rgba(30,39,174,0.50);
+      border-radius: 7px; padding: 7px 11px; cursor: pointer; width: 100%;
       color: var(--text); font-size: 12px; font-weight: 500; font-family: inherit;
+      transition: border-color 0.15s, background 0.15s;
     }
+    .cal-picker-btn:hover { border-color: var(--brand-mid); background: var(--bg3); }
     .cal-picker-selected { display: flex; align-items: center; gap: 8px; }
-    .cal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-
-    /* ── Section dividers for preview ──────────────────────────────────── */
-    .section-label {
-      font-size: 9px; font-weight: 600; letter-spacing: 2px;
-      text-transform: uppercase; color: var(--brand);
-      margin: 24px 0 12px; padding-top: 16px;
-      border-top: 1px dashed var(--border);
-    }
-    .section-label:first-of-type { border-top: none; margin-top: 16px; }
+    .cal-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
     /* ── Settings panel ────────────────────────────────────────────────── */
     .settings-panel {
       position: absolute; inset: 0;
-      background: var(--bg); z-index: 200;
-      display: flex; flex-direction: column;
-      overflow: hidden;
+      z-index: 200; display: flex; flex-direction: column; overflow: hidden;
+    }
+    [data-theme="dark"] .settings-panel {
+      background: linear-gradient(160deg, #16204a 0%, #111838 100%);
+    }
+    [data-theme="light"] .settings-panel {
+      background: linear-gradient(160deg, #dfe0ee 0%, #e6e3e8 100%);
     }
     .settings-header {
-      display: flex; align-items: center;
-      padding: 12px 14px;
+      display: flex; align-items: center; padding: 13px 16px;
       border-bottom: 1px solid var(--border);
       position: relative; flex-shrink: 0;
     }
     .settings-back {
       background: none; border: none; color: var(--text3);
       cursor: pointer; padding: 2px; display: flex; align-items: center;
+      transition: color 0.15s;
     }
     .settings-back:hover { color: var(--text); }
     .settings-title {
-      font-weight: 600; font-size: 13px; color: var(--text);
+      font-weight: 600; font-size: 11px; color: var(--text);
       position: absolute; left: 50%; transform: translateX(-50%);
+      letter-spacing: 0.10em; text-transform: uppercase;
+      font-family: 'Poppins', sans-serif;
     }
-    .settings-body {
-      overflow-y: auto; flex: 1; padding: 14px;
-    }
-    .settings-hint {
-      font-size: 11px; font-weight: 300; color: var(--text3);
-      margin-bottom: 14px; line-height: 1.5;
-    }
+    .settings-body { overflow-y: auto; flex: 1; padding: 14px; }
+    .settings-hint { font-size: 11px; font-weight: 300; color: var(--text3); margin-bottom: 14px; line-height: 1.6; }
+
     .settings-section-label {
-      font-size: 10px; font-weight: 600; color: var(--brand);
-      text-transform: uppercase; letter-spacing: 0.5px;
-      margin-bottom: 6px;
+      font-size: 9px; font-weight: 600; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.10em; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
     }
-    [data-theme="dark"] .settings-section-label { color: #7a8adf; }
-    .settings-section-label + .settings-section-label { margin-top: 16px; }
+    .settings-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
     .alias-cal-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+      background: var(--card-bg); box-shadow: var(--card-shine);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; margin-bottom: 6px; transition: opacity 0.2s;
     }
-    .alias-cal-card.hidden-cal { opacity: 0.5; }
-    .alias-cal-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
-    }
-    .alias-cal-name {
-      display: flex; align-items: center; gap: 6px;
-      font-weight: 600; font-size: 11px; color: var(--text2);
-    }
+    .alias-cal-card.hidden-cal { opacity: 0.45; }
+    .alias-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .alias-cal-name { display: flex; align-items: center; gap: 7px; font-weight: 500; font-size: 11px; color: var(--text2); }
+
     .cal-vis-toggle {
       width: 32px; height: 18px; border-radius: 9px;
       border: none; cursor: pointer; position: relative;
@@ -506,27 +609,28 @@
       background: #fff; top: 3px; transition: left 0.2s;
     }
     .cal-vis-toggle.on::after { left: 17px; }
-    .cal-vis-toggle.off::after { left: 3px; background: #ccc; }
+    .cal-vis-toggle.off::after { left: 3px; background: #888; }
 
-    .alias-tags {
-      display: flex; flex-wrap: wrap; gap: 4px;
-    }
+    .alias-tags { display: flex; flex-wrap: wrap; gap: 4px; }
     .alias-tag {
       background: var(--bg); border: 1px solid var(--border);
-      border-radius: 20px; padding: 2px 8px;
+      border-radius: 20px; padding: 2px 9px;
       font-size: 10px; font-weight: 500; color: var(--text2);
       display: flex; align-items: center; gap: 4px;
+      font-family: 'Poppins', sans-serif;
     }
     .alias-tag-remove {
       background: none; border: none; color: var(--text4);
       cursor: pointer; padding: 0; font-size: 12px; line-height: 1;
+      transition: color 0.15s;
     }
     .alias-tag-remove:hover { color: #f87171; }
     .alias-add-pill {
       background: none; border: 1px dashed var(--border);
-      border-radius: 20px; padding: 2px 8px;
-      font-size: 10px; font-weight: 300; color: var(--text3);
-      cursor: pointer;
+      border-radius: 20px; padding: 2px 9px;
+      font-size: 10px; color: var(--text4);
+      cursor: pointer; font-family: 'Poppins', sans-serif;
+      transition: border-color 0.15s, color 0.15s;
     }
     .alias-add-pill:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -536,23 +640,22 @@
       border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
     }
     .gmail-toggle-label { font-size: 11px; font-weight: 500; color: var(--text2); }
-
     .change-key-btn {
       background: none; border: none; color: var(--text3);
-      font-size: 12px; font-weight: 300; cursor: pointer;
-      text-decoration: underline; padding: 0; font-family: inherit;
+      font-size: 11px; cursor: pointer; text-decoration: underline;
+      padding: 0; font-family: 'Poppins', sans-serif; transition: color 0.15s;
     }
     .change-key-btn:hover { color: var(--text2); }
   </style>
 </head>
 <body>
 
-  <div class="preview-label">Pluck UI Preview — click to toggle theme</div>
+  <div class="preview-label">PLUCK · DESIGN EXPLORATION v2 · toggle states with controls below</div>
   <div class="preview-controls">
-    <button class="active" onclick="setTheme('dark')">Dark Theme</button>
-    <button onclick="setTheme('light')">Light Theme</button>
-    <button onclick="toggleView()">Toggle: Input / Results</button>
-    <button onclick="toggleSettings()">Toggle: Settings</button>
+    <button class="active" onclick="setTheme('dark')">Dark</button>
+    <button onclick="setTheme('light')">Light</button>
+    <button onclick="toggleView()">Input ↔ Results</button>
+    <button onclick="toggleSettings()">Settings</button>
   </div>
 
   <div class="preview-frame">
@@ -560,26 +663,26 @@
 
       <!-- ════ HEADER ════ -->
       <div class="header">
-        <div class="header-icon" style="background:none; padding:0;">
-            <svg width="32" height="32" viewBox="100 120 830 740" xmlns="http://www.w3.org/2000/svg">
-              <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6z" fill="var(--brand)"/>
-              <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6zm-150 218-1 1-7 49-19 125-16 108-15 102-1 7v10l3 11 6 8 8 7 12 5 4 1h431l8-4 6-7 2-4 7-48 6-17 8-13 9-10 8-8 14-9 12-6 18-5 16-2h63l10-3 6-5 4-8 13-92 13-90 14-98v-5z" fill="#fff"/>
-              <path transform="translate(345,371)" d="m0 0h255l28 3 23 4 26 7 21 8 19 10 16 12 7 6 9 11 6 10 5 12 2 8v24l-4 16-8 16-6 9-12 14-14 12-18 12-23 12-23 9-31 9-26 5-23 3-31 2h-157l-2 9-16 49-13 38-7 21h-127l3-9 10-29 13-37 15-43 13-37 34-96 15-42 19-54z" fill="#fff"/>
-              <path transform="translate(267,220)" d="m0 0h48l1 2-4 27v9l4 10 9 8 9 3h16l12-4 8-6 6-7 3-7 5-34 1-1h141l142 1-1 13-2 14v11l3 8 5 6 9 5 9 2 13-1 11-4 8-6 6-7 4-11 4-30 1-1h40l47 1 12 4 9 6 7 8 4 8 1 3v17l-7 49-1 2h-642l3-22 6-38 4-10 8-11 11-9 13-6z" fill="var(--brand)"/>
-              <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-5 35-5 2-4 30-4 11-9 10-10 6-13 3h-7l-11-3-9-6-6-9-1-4v-11l4-27h-283l-5 34-5 10-8 8-10 5-7 2h-16l-10-4-8-7-4-8-1-3v-9l4-28-2-3 5-28h-42v-1h45l1-14 3-20 6-12 8-8 12-6z" fill="#fff"/>
-              <path transform="translate(518,399)" d="m0 0h29l10 10 8 7 12 12 7 8 12 13 9 11 3 3v2h25l23 2 20 4 9 4 6 4 3 4-1 5-6 5-11 5-18 4-21 2-33 1-13 12-11 9-13 11-14 11-16 13-15 11-2 1h-27l6-8 12-15 14-19 14-20 5-8h-11l-62-5-20 15-10 7-3 2h-25l6-8 12-17 9-13-1-5-13-30-2-6h23l6 5 5 5 12 13 3 3 26-1 51-3-9-22-8-16-10-19z" fill="var(--brand)"/>
-              <path transform="translate(888,236)" d="m0 0 3 4 5 11 2 7v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-2-5 8 6 11 6 12 5 10 2h448l12-3 16-8 54-42 13-10 11-9 18-14 28-22 13-10 16-13 13-10 11-9 10-15 3-8 12-83 24-170 11-75 5-38 1-6v-13z" fill="rgba(255,255,255,0.3)"/>
-            </svg>
-          </div>
+        <div class="header-icon">
+          <svg width="46" height="46" viewBox="100 120 830 740" xmlns="http://www.w3.org/2000/svg">
+            <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6z" fill="var(--brand)"/>
+            <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-1 5h78l18 4 12 5 13 9 9 9 7 11 11 21 3 10v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-14-21-5-13-1-5v-21l13-87 9-61 11-72 15-101 13-86 11-72 5-15 7-13 12-14 10-8 16-9 16-5 11-2h60l1-14 3-20 6-12 8-8 12-6zm-150 218-1 1-7 49-19 125-16 108-15 102-1 7v10l3 11 6 8 8 7 12 5 4 1h431l8-4 6-7 2-4 7-48 6-17 8-13 9-10 8-8 14-9 12-6 18-5 16-2h63l10-3 6-5 4-8 13-92 13-90 14-98v-5z" fill="#fff"/>
+            <path transform="translate(345,371)" d="m0 0h255l28 3 23 4 26 7 21 8 19 10 16 12 7 6 9 11 6 10 5 12 2 8v24l-4 16-8 16-6 9-12 14-14 12-18 12-23 12-23 9-31 9-26 5-23 3-31 2h-157l-2 9-16 49-13 38-7 21h-127l3-9 10-29 13-37 15-43 13-37 34-96 15-42 19-54z" fill="#fff"/>
+            <path transform="translate(267,220)" d="m0 0h48l1 2-4 27v9l4 10 9 8 9 3h16l12-4 8-6 6-7 3-7 5-34 1-1h141l142 1-1 13-2 14v11l3 8 5 6 9 5 9 2 13-1 11-4 8-6 6-7 4-11 4-30 1-1h40l47 1 12 4 9 6 7 8 4 8 1 3v17l-7 49-1 2h-642l3-22 6-38 4-10 8-11 11-9 13-6z" fill="var(--brand)"/>
+            <path transform="translate(354,128)" d="m0 0h17l10 4 6 5 5 8 4 9 2 6-1 10-3 18h279l5-35 7-12 8-7 11-5 3-1h16l9 3 9 8 6 12 4 11-3 22-5 35-5 2-4 30-4 11-9 10-10 6-13 3h-7l-11-3-9-6-6-9-1-4v-11l4-27h-283l-5 34-5 10-8 8-10 5-7 2h-16l-10-4-8-7-4-8-1-3v-9l4-28-2-3 5-28h-42v-1h45l1-14 3-20 6-12 8-8 12-6z" fill="#fff"/>
+            <path transform="translate(518,399)" d="m0 0h29l10 10 8 7 12 12 7 8 12 13 9 11 3 3v2h25l23 2 20 4 9 4 6 4 3 4-1 5-6 5-11 5-18 4-21 2-33 1-13 12-11 9-13 11-14 11-16 13-15 11-2 1h-27l6-8 12-15 14-19 14-20 5-8h-11l-62-5-20 15-10 7-3 2h-25l6-8 12-17 9-13-1-5-13-30-2-6h23l6 5 5 5 12 13 3 3 26-1 51-3-9-22-8-16-10-19z" fill="var(--brand)"/>
+            <path transform="translate(888,236)" d="m0 0 3 4 5 11 2 7v21l-14 99-12 89-10 73-5 37-8 58-2 14-5 13-7 11-9 9-16 12-16 13-17 13-17 14-13 10-16 13-16 12-15 12-13 10-15 12-10 7-15 8-16 4h-451l-16-4-14-7-10-8-8-9-2-5 8 6 11 6 12 5 10 2h448l12-3 16-8 54-42 13-10 11-9 18-14 28-22 13-10 16-13 13-10 11-9 10-15 3-8 12-83 24-170 11-75 5-38 1-6v-13z" fill="rgba(255,255,255,0.25)"/>
+          </svg>
+        </div>
         <div>
           <div class="header-title">Pluck</div>
-          <div class="header-sub">Travel & Events</div>
+          <div class="header-sub">Travel &amp; Events</div>
         </div>
       </div>
 
       <!-- ════ INPUT VIEW ════ -->
       <div id="input-view">
-        <!-- URL row -->
+
         <div class="url-row">
           <input type="text" placeholder="Paste a PDF link from email..." />
           <button class="url-btn">Fetch</button>
@@ -587,7 +690,6 @@
 
         <div class="or-divider"><span>or</span></div>
 
-        <!-- Drop zone -->
         <div class="drop-zone" id="drop-zone">
           <div class="upload-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -597,35 +699,32 @@
             </svg>
           </div>
           <div class="upload-label">Drop any file — PDF, email, image, or screenshot</div>
-          <div class="upload-sublabel">Ctrl+V / Cmd+V to paste text, images, or files</div>
+          <div class="upload-sublabel">ctrl+v / ⌘v to paste text, images, or files</div>
           <button class="browse-btn">Browse files</button>
         </div>
 
-        <!-- File list (sample loaded files) -->
         <div class="file-list" id="file-list-sample" style="display:none;">
           <div class="file-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             <span class="file-item-name">WheelsUpTripSheet_388546.pdf</span>
-            <button class="file-remove">x</button>
+            <button class="file-remove">✕</button>
           </div>
           <div class="file-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             <span class="file-item-name">Prive-Itinerary-71799.pdf</span>
-            <button class="file-remove">x</button>
+            <button class="file-remove">✕</button>
           </div>
         </div>
 
-        <button class="btn-primary" id="extract-btn">Extract calendar events</button>
+        <button class="btn-primary" id="extract-btn" disabled>Extract calendar events</button>
 
         <button class="btn-scan">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           Scan this page for events
         </button>
-        <div class="scan-hint">or upload a picture above</div>
 
-        <!-- Status sample -->
         <div class="status">
           <div class="spinner"></div>
           Extracting events from 2 files...
@@ -635,14 +734,12 @@
       <!-- ════ RESULTS VIEW ════ -->
       <div id="results-view" style="display:none;">
 
-        <!-- Collapsed drop zone -->
         <div class="drop-zone-collapsed">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          2 files loaded
-          <span class="change-link" onclick="toggleView()">Change files</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="file-summary">WheelsUpTripSheet_388546.pdf</span>
+          <span class="change-link" onclick="toggleView()">change files</span>
         </div>
 
-        <!-- Calendar picker -->
         <div class="cal-picker-row">
           <div class="picker-label">Add to calendar</div>
           <button class="cal-picker-btn">
@@ -654,92 +751,52 @@
           </button>
         </div>
 
-        <div class="section-label">Travel Results</div>
+        <div class="section-label">Travel</div>
 
-        <!-- Flight card -->
-        <div class="event-card">
+        <div class="event-card flight">
           <div class="event-top">
-            <span class="event-title">Fly Newark to Miami (AA 1692)</span>
-            <span class="tag tag-flight"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.5 3.2-2.7 2.7-2.5-.5c-.3-.1-.7 0-.9.2l-.3.3c-.2.3-.1.7.1.9l2.6 1.9 1.9 2.6c.2.3.6.3.9.1l.3-.3c.2-.2.3-.6.2-.9l-.5-2.5 2.7-2.7 3.2 5.5c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>FLIGHT</span>
+            <span class="event-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></span>
+            <span class="event-title">Fly Newark → Miami (AA 1692)</span>
+            <span class="tag tag-flight"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.5 3.2-2.7 2.7-2.5-.5c-.3-.1-.7 0-.9.2l-.3.3c-.2.3-.1.7.1.9l2.6 1.9 1.9 2.6c.2.3.6.3.9.1l.3-.3c.2-.2.3-.6.2-.9l-.5-2.5 2.7-2.7 3.2 5.5c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>FLIGHT</span>
           </div>
-          <div class="field-row">
-            <span class="field-label">Route</span>
-            <span class="field-val">Newark, NJ (EWR) - Miami, FL (MIA)</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Depart</span>
-            <span class="field-val">Thu, Apr 3 at 8:15 AM</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Arrive</span>
-            <span class="field-val">Thu, Apr 3 at 11:32 AM</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Passengers</span>
-            <span class="field-val">Kevin Jonas (2A), Jeremy Book (2B)</span>
-          </div>
-          <button class="cal-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Add to Google Calendar
-          </button>
+          <div class="field-row"><span class="field-label">Route</span><span class="field-val">EWR → MIA</span></div>
+          <div class="field-row"><span class="field-label">Depart</span><span class="field-val">Thu Apr 3 · 08:15</span></div>
+          <div class="field-row"><span class="field-label">Arrive</span><span class="field-val">Thu Apr 3 · 11:32</span></div>
+          <div class="field-row"><span class="field-label">Passengers</span><span class="field-val">K. Jonas (2A) · J. Book (2B)</span></div>
+          <button class="cal-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Add to K2 Calendar</button>
         </div>
 
-        <!-- Hotel card -->
-        <div class="event-card">
+        <div class="event-card hotel">
           <div class="event-top">
+            <span class="event-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21V7a2 2 0 012-2h14a2 2 0 012 2v14"/><path d="M3 11h18"/><rect x="7" y="11" width="4" height="5"/><rect x="13" y="11" width="4" height="5"/></svg></span>
             <span class="event-title">Stay at Faena Miami Beach</span>
-            <span class="tag tag-hotel"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V7a2 2 0 012-2h14a2 2 0 012 2v14"/><path d="M3 11h18"/><rect x="7" y="11" width="4" height="5"/><rect x="13" y="11" width="4" height="5"/></svg>HOTEL</span>
+            <span class="tag tag-hotel"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V7a2 2 0 012-2h14a2 2 0 012 2v14"/><path d="M3 11h18"/><rect x="7" y="11" width="4" height="5"/><rect x="13" y="11" width="4" height="5"/></svg>HOTEL</span>
           </div>
-          <div class="field-row">
-            <span class="field-label">Check-in</span>
-            <span class="field-val">Thu, Apr 3 at 3:00 PM</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Check-out</span>
-            <span class="field-val">Sun, Apr 6 at 11:00 AM</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Confirmation</span>
-            <span class="field-val">FNA-882741</span>
-          </div>
-          <button class="cal-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Add to Google Calendar
-          </button>
+          <div class="field-row"><span class="field-label">Check-in</span><span class="field-val">Thu Apr 3 · 15:00</span></div>
+          <div class="field-row"><span class="field-label">Check-out</span><span class="field-val">Sun Apr 6 · 11:00</span></div>
+          <div class="field-row"><span class="field-label">Confirmation</span><span class="field-val">FNA-882741</span></div>
+          <button class="cal-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Add to K2 Calendar</button>
         </div>
 
-        <!-- Charter card -->
-        <div class="event-card">
+        <div class="event-card charter">
           <div class="event-top">
-            <span class="event-title">Private: Toms River, NJ to Monticello, NY (KMJX &rarr; KMSV)</span>
-            <span class="tag tag-charter"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.5 3.2-2.7 2.7-2.5-.5c-.3-.1-.7 0-.9.2l-.3.3c-.2.3-.1.7.1.9l2.6 1.9 1.9 2.6c.2.3.6.3.9.1l.3-.3c.2-.2.3-.6.2-.9l-.5-2.5 2.7-2.7 3.2 5.5c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>CHARTER</span>
+            <span class="event-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></span>
+            <span class="event-title">Private: KMJX → KMSV (G280)</span>
+            <span class="tag tag-charter"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.5 3.2-2.7 2.7-2.5-.5c-.3-.1-.7 0-.9.2l-.3.3c-.2.3-.1.7.1.9l2.6 1.9 1.9 2.6c.2.3.6.3.9.1l.3-.3c.2-.2.3-.6.2-.9l-.5-2.5 2.7-2.7 3.2 5.5c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>CHARTER</span>
           </div>
-          <div class="field-row">
-            <span class="field-label">Aircraft</span>
-            <span class="field-val">Gulfstream G280 | N609RC</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Depart</span>
-            <span class="field-val">Fri, Apr 4 at 10:00 AM</span>
-          </div>
-          <div class="field-row">
-            <span class="field-label">Passengers</span>
-            <span class="field-val">Kevin Jonas, Jeremy Book</span>
-          </div>
-          <button class="cal-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Add to Google Calendar
-          </button>
+          <div class="field-row"><span class="field-label">Aircraft</span><span class="field-val">Gulfstream G280 · N609RC</span></div>
+          <div class="field-row"><span class="field-label">Depart</span><span class="field-val">Fri Apr 4 · 10:00</span></div>
+          <div class="field-row"><span class="field-label">Passengers</span><span class="field-val">K. Jonas · J. Book</span></div>
+          <button class="cal-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Add to K2 Calendar</button>
         </div>
 
         <div class="section-label">Detected Events</div>
 
-        <!-- Detected: Dinner (selected) -->
         <div class="detected-card selected">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox" checked>
             <span class="detected-title">Dinner at Carbone</span>
-            <span class="event-type-tag type-dinner"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>DINNER</span>
+            <span class="event-type-tag type-dinner"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>DINNER</span>
           </div>
           <div class="edit-panel" style="display:block;">
             <div class="edit-row">
@@ -747,14 +804,8 @@
               <input class="edit-input" value="Dinner at Carbone" />
             </div>
             <div class="edit-row-2">
-              <div>
-                <div class="edit-label">Start</div>
-                <input class="edit-input" value="2026-04-03T19:30" type="datetime-local" />
-              </div>
-              <div>
-                <div class="edit-label">End</div>
-                <input class="edit-input" value="2026-04-03T21:30" type="datetime-local" />
-              </div>
+              <div><div class="edit-label">Start</div><input class="edit-input" value="2026-04-03T19:30" type="datetime-local" /></div>
+              <div><div class="edit-label">End</div><input class="edit-input" value="2026-04-03T21:30" type="datetime-local" /></div>
             </div>
             <div class="edit-row">
               <div class="edit-label">Location</div>
@@ -762,91 +813,57 @@
             </div>
             <div class="edit-row">
               <div class="edit-label">Notes</div>
-              <input class="edit-input" value="Party of 3 | Confirmation: CB-4491" />
+              <input class="edit-input" value="Party of 3 · Confirmation: CB-4491" />
             </div>
           </div>
         </div>
 
-        <!-- Detected: Meeting (not selected) -->
         <div class="detected-card">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">Zoom - Copper Cup x Body Brokers</span>
-            <span class="event-type-tag type-meeting"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>MEETING</span>
+            <span class="detected-title">Zoom — Copper Cup × Body Brokers</span>
+            <span class="event-type-tag type-meeting"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>MEETING</span>
           </div>
         </div>
 
-        <!-- Detected: Appointment -->
         <div class="detected-card">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox">
             <span class="detected-title">Haircut at Blind Barber</span>
-            <span class="event-type-tag type-grooming"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>GROOMING</span>
+            <span class="event-type-tag type-grooming"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>GROOMING</span>
           </div>
         </div>
 
-        <!-- Detected: Event -->
         <div class="detected-card">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox">
             <span class="detected-title">Met Gala After-Party</span>
-            <span class="event-type-tag type-party"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.8 11.3L2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="M22 2l-2.24.75a2.9 2.9 0 00-1.96 3.12v0c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="M22 13l-1.34-.45a2.9 2.9 0 01-1.96-3.12v0c.1-.86-.57-1.63-1.45-1.63h-.38c-.86 0-1.6-.6-1.76-1.44L15 5"/></svg>PARTY</span>
+            <span class="event-type-tag type-party"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.8 11.3L2 22l10.7-3.79M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="M22 2l-2.24.75a2.9 2.9 0 00-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/></svg>PARTY</span>
           </div>
         </div>
 
-        <!-- Detected: Pickup -->
         <div class="detected-card">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">Car to JFK Airport</span>
-            <span class="event-type-tag type-pickup"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17h2m10 0h2M3 11l1.5-5A2 2 0 016.4 4.5h11.2a2 2 0 011.9 1.5L21 11"/><rect x="2" y="11" width="20" height="6" rx="2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>PICKUP</span>
+            <span class="detected-title">Jonas Brothers — Yankee Stadium</span>
+            <span class="event-type-tag type-performance"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>PERFORMANCE</span>
           </div>
         </div>
 
-        <!-- Detected: Styling -->
         <div class="detected-card">
           <div class="detected-card-header">
             <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">Wardrobe fitting with Rob Zangardi</span>
-            <span class="event-type-tag type-styling"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46L16 2 12 5 8 2 3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47c.1.6.6 1.04 1.2 1.04H8v10c0 1.1.9 2 2 2h4a2 2 0 002-2V10h3.94c.6 0 1.1-.44 1.2-1.04l.58-3.47a2 2 0 00-1.34-2.23z"/></svg>STYLING</span>
+            <span class="detected-title">GQ Cover Shoot — Pier 59 Studios</span>
+            <span class="event-type-tag type-photo"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>PHOTO</span>
           </div>
         </div>
 
-        <!-- Detected: Performance -->
-        <div class="detected-card">
-          <div class="detected-card-header">
-            <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">Jonas Brothers - Yankee Stadium</span>
-            <span class="event-type-tag type-performance"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>PERFORMANCE</span>
-          </div>
-        </div>
-
-        <!-- Detected: Photo Shoot -->
-        <div class="detected-card">
-          <div class="detected-card-header">
-            <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">GQ Cover Shoot - Pier 59 Studios</span>
-            <span class="event-type-tag type-photo"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>PHOTO</span>
-          </div>
-        </div>
-
-        <!-- Detected: Interview -->
-        <div class="detected-card">
-          <div class="detected-card-header">
-            <input type="checkbox" class="detect-checkbox">
-            <span class="detected-title">People Magazine Feature Interview</span>
-            <span class="event-type-tag type-interview"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>INTERVIEW</span>
-          </div>
-        </div>
-
-        <!-- Action row -->
         <div class="detect-actions">
           <button class="select-btn">Select all</button>
           <button class="select-btn">Deselect all</button>
         </div>
         <button class="add-cal-btn">Add selected to Google Calendar</button>
 
-        <!-- Message box samples -->
         <div class="section-label">Message Styles</div>
         <div class="info-box">2 events created successfully in Jeremy's Calendar.</div>
         <div class="warn-box">Could not determine timezone for 1 event. Defaulted to America/New_York.</div>
@@ -857,18 +874,18 @@
       <div class="footer">
         <div id="footer-auth">
           <button class="connect-google-btn" id="connect-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-4.03 1.222-4.979 3.188A4.95 4.95 0 0 0 2.5 8c0 .716.137 1.4.385 2.026C3.878 12.14 5.753 13.33 8 13.33a4.855 4.855 0 0 0 3.363-1.358"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-4.03 1.222-4.979 3.188A4.95 4.95 0 0 0 2.5 8c0 .716.137 1.4.385 2.026C3.878 12.14 5.753 13.33 8 13.33a4.855 4.855 0 0 0 3.363-1.358"/></svg>
             Connect Google
           </button>
           <div class="footer-account" id="footer-account" style="display:none;">
             <div class="account-avatar">J</div>
-            <span class="account-email">jeremy@jonas.com</span>
+            <span class="account-email">jeremy@jonasenterprises.com</span>
             <button class="text-btn">sign out</button>
           </div>
         </div>
         <div class="footer-right">
           <button class="icon-btn" title="Settings" onclick="toggleSettings()">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
           <label class="theme-switch" title="Toggle theme">
             <input type="checkbox" id="theme-toggle-preview">
@@ -891,13 +908,9 @@
 
           <div class="settings-section-label">My Calendars</div>
 
-          <!-- Calendar 1: Jeremy's Calendar -->
           <div class="alias-cal-card">
             <div class="alias-cal-header">
-              <div class="alias-cal-name">
-                <span class="cal-dot" style="background:#4285f4;"></span>
-                Jeremy's Calendar
-              </div>
+              <div class="alias-cal-name"><span class="cal-dot" style="background:#4285f4;"></span>Jeremy's Calendar</div>
               <button class="cal-vis-toggle on" style="background:#4285f4;"></button>
             </div>
             <div class="alias-tags">
@@ -907,51 +920,26 @@
             </div>
           </div>
 
-          <!-- Calendar 2: Work -->
           <div class="alias-cal-card">
             <div class="alias-cal-header">
-              <div class="alias-cal-name">
-                <span class="cal-dot" style="background:#0b8043;"></span>
-                Work
-              </div>
+              <div class="alias-cal-name"><span class="cal-dot" style="background:#0b8043;"></span>K2 Calendar</div>
               <button class="cal-vis-toggle on" style="background:#0b8043;"></button>
             </div>
             <div class="alias-tags">
               <span class="alias-tag">kevin <button class="alias-tag-remove">&times;</button></span>
               <span class="alias-tag">jonas <button class="alias-tag-remove">&times;</button></span>
-              <span class="alias-tag">kj <button class="alias-tag-remove">&times;</button></span>
               <button class="alias-add-pill">+ add alias</button>
             </div>
           </div>
 
           <div class="settings-section-label" style="margin-top:16px;">Other Calendars</div>
 
-          <!-- Calendar 3: Holidays (hidden) -->
           <div class="alias-cal-card hidden-cal">
             <div class="alias-cal-header">
-              <div class="alias-cal-name">
-                <span class="cal-dot" style="background:#8e24aa;"></span>
-                US Holidays
-              </div>
-              <button class="cal-vis-toggle off" style="background:#444;"></button>
+              <div class="alias-cal-name"><span class="cal-dot" style="background:#8e24aa;"></span>US Holidays</div>
+              <button class="cal-vis-toggle off" style="background:var(--border);"></button>
             </div>
-            <div class="alias-tags">
-              <button class="alias-add-pill">+ add alias</button>
-            </div>
-          </div>
-
-          <!-- Calendar 4: Birthdays -->
-          <div class="alias-cal-card">
-            <div class="alias-cal-header">
-              <div class="alias-cal-name">
-                <span class="cal-dot" style="background:#f4511e;"></span>
-                Birthdays
-              </div>
-              <button class="cal-vis-toggle on" style="background:#f4511e;"></button>
-            </div>
-            <div class="alias-tags">
-              <button class="alias-add-pill">+ add alias</button>
-            </div>
+            <div class="alias-tags"><button class="alias-add-pill">+ add alias</button></div>
           </div>
 
           <div class="settings-section-label" style="margin-top:16px;">Gmail Integration</div>
@@ -969,7 +957,6 @@
   </div>
 
   <script>
-    // Theme switching
     function setTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       document.querySelector('#theme-toggle-preview').checked = theme === 'light';
@@ -982,40 +969,36 @@
       setTheme(e.target.checked ? 'light' : 'dark');
     });
 
-    // Toggle between input view and results view
     let showingResults = false;
     function toggleView() {
       showingResults = !showingResults;
-      document.getElementById('input-view').style.display = showingResults ? 'none' : 'block';
+      document.getElementById('input-view').style.display   = showingResults ? 'none'  : 'block';
       document.getElementById('results-view').style.display = showingResults ? 'block' : 'none';
-      document.querySelector('.preview-frame').classList.toggle('results-loaded', showingResults);
     }
 
-    // Toggle settings panel
     let showingSettings = false;
     function toggleSettings() {
       showingSettings = !showingSettings;
       document.getElementById('settings-view').style.display = showingSettings ? 'flex' : 'none';
     }
 
-    // Toggle signed-in state
     document.getElementById('connect-btn').addEventListener('click', () => {
       document.getElementById('connect-btn').style.display = 'none';
       document.getElementById('footer-account').style.display = 'flex';
     });
 
-    // Toggle file list on drop zone click
     document.getElementById('drop-zone').addEventListener('click', () => {
-      const fl = document.getElementById('file-list-sample');
-      const dz = document.getElementById('drop-zone');
+      const fl  = document.getElementById('file-list-sample');
+      const dz  = document.getElementById('drop-zone');
+      const btn = document.getElementById('extract-btn');
       if (fl.style.display === 'none') {
         fl.style.display = 'flex';
         dz.classList.add('has-files');
-        document.getElementById('extract-btn').removeAttribute('disabled');
+        btn.removeAttribute('disabled');
       } else {
         fl.style.display = 'none';
         dz.classList.remove('has-files');
-        document.getElementById('extract-btn').setAttribute('disabled', '');
+        btn.setAttribute('disabled', '');
       }
     });
   </script>

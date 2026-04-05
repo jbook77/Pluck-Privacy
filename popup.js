@@ -511,7 +511,11 @@ function flashDropZone() {
 
 // ─── Gmail file intake ────────────────────────────────────────────────────────
 function loadGmailFiles(files) {
+  // Deduplicate by filename — Gmail often attaches the same confirmation to multiple recipients
+  const seen = new Set(loadedFiles.map(f => f.name));
   files.forEach(f => {
+    if (seen.has(f.name)) return;
+    seen.add(f.name);
     loadedFiles.push({
       name:      f.name,
       base64:    f.base64,
@@ -815,7 +819,8 @@ function renderTravelCards(events) {
     const passengerCount = charter
       ? (ev.passengers && ev.passengers.length ? ev.passengers.length : 0)
       : (ev.passengers && ev.passengers.length ? ev.passengers.length : 0);
-    html += '<div class="event-card">'
+    const cardClass = hotel ? 'hotel' : (charter ? 'charter' : 'flight');
+    html += '<div class="event-card ' + cardClass + '">'
       + '<div class="event-top"><span class="event-icon">' + icon + '</span>'
       + '<span class="event-title">' + escHtml(ev.title) + '</span>'
       + '<span class="tag ' + tagClass + '">' + (hotel ? hotelTagSVG : flightTagSVG) + tagLabel.toUpperCase() + '</span></div>'

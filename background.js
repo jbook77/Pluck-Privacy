@@ -118,7 +118,8 @@ async function _fetchGmailAttachments(messageId) {
     if (contentId && mt.startsWith('image/')) return false; // inline embedded image
     return mt === 'application/pdf'
       || mt.startsWith('image/')
-      || (mt === 'application/octet-stream' && fn.endsWith('.pdf'));
+      || mt === 'message/rfc822'
+      || (mt === 'application/octet-stream' && (fn.endsWith('.pdf') || fn.endsWith('.eml')));
   });
 
   if (!qualifying.length) throw new Error('No PDF or image attachments found in this email');
@@ -135,15 +136,18 @@ async function _fetchGmailAttachments(messageId) {
 
     // Gmail uses base64url — convert to standard base64
     const base64 = attData.data.replace(/-/g, '+').replace(/_/g, '/');
-    const mimeType = (part.mimeType === 'application/octet-stream' && part.filename.toLowerCase().endsWith('.pdf'))
-      ? 'application/pdf'
-      : part.mimeType;
+    let mimeType = part.mimeType;
+    if (mimeType === 'application/octet-stream' && part.filename.toLowerCase().endsWith('.pdf')) {
+      mimeType = 'application/pdf';
+    } else if (mimeType === 'message/rfc822' || (mimeType === 'application/octet-stream' && part.filename.toLowerCase().endsWith('.eml'))) {
+      mimeType = 'text/plain'; // Gemini doesn't support message/rfc822; eml is readable as plain text
+    }
 
     files.push({
       name: part.filename,
       base64,
       mimeType,
-      kind: mimeType === 'application/pdf' ? 'travel' : 'image'
+      kind: (mimeType === 'application/pdf' || mimeType === 'text/plain') ? 'travel' : 'image'
     });
   }
 

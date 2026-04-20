@@ -862,6 +862,15 @@ function renderTravelCards(events) {
       + '</div>';
   });
   showResult(html);
+  document.querySelectorAll('.travel-edit-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.getAttribute('data-i');
+      const card = document.getElementById('tev-' + idx);
+      if (!card) return;
+      const isOpen = card.classList.toggle('travel-edit-open');
+      btn.textContent = isOpen ? '▴ Collapse' : '✎ Edit';
+    });
+  });
   document.querySelectorAll('.travel-cal-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.getAttribute('data-i'));

@@ -875,7 +875,45 @@ function renderTravelCards(events) {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.getAttribute('data-i'));
       const ev = events[idx];
-      await addTravelEventToCalendar(ev);
+      const card = document.getElementById('tev-' + idx);
+      const isEdited = card && card.classList.contains('travel-edit-open');
+      if (!isEdited) { await addTravelEventToCalendar(ev); return; }
+
+      const hotel = ev.type === 'hotel';
+      const titleEl = document.getElementById('tvt-' + idx);
+      const sdEl = document.getElementById('tvsd-' + idx);
+      const edEl = hotel ? document.getElementById('tved-' + idx) : null;
+      const stEl = hotel ? null : document.getElementById('tvst-' + idx);
+      const etEl = hotel ? null : document.getElementById('tvet-' + idx);
+      const locEl = document.getElementById('tvl-' + idx);
+      const notesEl = document.getElementById('tvn-' + idx);
+
+      const title = (titleEl && titleEl.value.trim()) || ev.title;
+      let startISO = ev.startISO;
+      let endISO = ev.endISO;
+      if (hotel) {
+        if (sdEl && sdEl.value) startISO = _buildDateOnlyISO(sdEl.value, ev.startISO);
+        if (edEl && edEl.value) endISO = _buildDateOnlyISO(edEl.value, ev.endISO);
+      } else {
+        if (sdEl && stEl && sdEl.value && stEl.value) {
+          startISO = _buildISO(sdEl.value, stEl.value, stEl.getAttribute('data-tz') || '');
+        }
+        if (sdEl && etEl && sdEl.value && etEl.value) {
+          endISO = _buildISO(sdEl.value, etEl.value, etEl.getAttribute('data-tz') || '');
+        }
+      }
+      const location = (locEl && locEl.value.trim()) || ev.location || '';
+      const notes = notesEl ? notesEl.value : '';
+
+      const editedEv = Object.assign({}, ev, {
+        title: title,
+        startISO: startISO,
+        endISO: endISO,
+        location: location,
+        baseDetails: notes,
+        passengers: []
+      });
+      await addTravelEventToCalendar(editedEv);
     });
   });
   updateTravelCalBtns();

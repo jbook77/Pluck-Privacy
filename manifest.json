@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Pluck — Travel & Events",
-  "background": { "service_worker": "background.js" },
-  "version": "1.2",
+  "name": "Pluck \u2014 Travel & Events",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyCHLf9K0910VqL6qYdkO7PNwGP3ZUm2izDvV0gpP0wATK3dATQBqglGMy7kv03Gokk2R5QkrvurrIisPrdryBy3qiFvO2uprvcHo/+SPFfBN6zN1RQvr6xfrRiMJGkpTwkty+fsgGB99CCcAqoqGFcZNY12Gv4IQ2tPPNCB8uDypuUwJOgpG9ywiwOW6KiJTs7Z5swaUeYd8efe4ojmDXr7SaakSMtQboFvS+2j+BFbJwI8bww+bVRFXr//HqjWcCyr7RNKIDSx4xZGUidqjWezHa+ErGWNsf/ng1uPfhPmoPwLTzLnC433Ih5pShJrRH2FOCKHVBPpjwKuOR+3Z/wIDAQAB",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "version": "1.3",
   "description": "Drop files, paste, or scan the page to add travel and events to Google Calendar.",
   "action": {
     "default_popup": "popup.html",
@@ -36,8 +39,12 @@
   ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "match_about_blank": true
     }

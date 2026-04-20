@@ -1,3 +1,11 @@
 .DS_Store
 .superpowers/
 pluck-extension.zip
+.vscode/
+
+# Private CWS publishing assets (bulky binaries, not source)
+Publishing docs/
+
+# Private sample travel docs (contain real booking info — reference only)
+docs/*.pdf
+docs/*.eml

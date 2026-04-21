@@ -272,6 +272,11 @@
     .edit-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .edit-textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; resize: vertical; min-height: 56px; }
     .edit-textarea:focus { border-color: var(--border2); }
+    .allday-row { display: flex; align-items: center; gap: 6px; padding: 0 12px 10px; font-size: 11px; color: var(--text2); }
+    .allday-row input[type="checkbox"] { margin: 0; cursor: pointer; }
+    .allday-row label { cursor: pointer; -webkit-user-select: none; user-select: none; }
+    .detected-card[data-allday="1"] .edit-times-row { display: none; }
+    .detected-card:not([data-allday="1"]) .edit-enddate-row { display: none; }
 
     /* ── Detect action row ─────────────────────────────────────────────── */
     .detect-actions { display: flex; gap: 8px; margin-top: 10px; }

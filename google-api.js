@@ -102,11 +102,18 @@ async function uploadToDrive(token, file) {
 async function createCalendarEvent(token, calendarId, eventData, fileIds) {
   const event = {
     summary: eventData.title,
-    start: { dateTime: eventData.startISO },
-    end: { dateTime: eventData.endISO },
     location: eventData.location || '',
     description: eventData.notes || eventData.baseDetails || ''
   };
+  if (eventData.allDay) {
+    const endPlus = new Date(eventData.endISO + 'T00:00:00Z');
+    endPlus.setUTCDate(endPlus.getUTCDate() + 1);
+    event.start = { date: eventData.startISO };
+    event.end = { date: endPlus.toISOString().slice(0, 10) };
+  } else {
+    event.start = { dateTime: eventData.startISO };
+    event.end = { dateTime: eventData.endISO };
+  }
   if (fileIds && fileIds.length) {
     event.attachments = fileIds.map(id => ({
       fileUrl: 'https://drive.google.com/open?id=' + id

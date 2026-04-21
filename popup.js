@@ -817,11 +817,20 @@ function buildTravelDetails(ev) {
   return d.trim();
 }
 
-function gcalUrl(title, startISO, endISO, location, details) {
-  const fmt = d => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+function gcalUrl(title, startISO, endISO, location, details, allDay) {
+  const fmtDT = d => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  let dates;
+  if (allDay) {
+    const endPlus = new Date(endISO + 'T00:00:00Z');
+    endPlus.setUTCDate(endPlus.getUTCDate() + 1);
+    const endStr = endPlus.toISOString().slice(0, 10).replace(/-/g, '');
+    dates = startISO.replace(/-/g, '') + '/' + endStr;
+  } else {
+    dates = fmtDT(startISO) + '/' + fmtDT(endISO);
+  }
   return 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
     action: 'TEMPLATE', text: title,
-    dates: fmt(startISO) + '/' + fmt(endISO),
+    dates: dates,
     details: details || '', location: location || ''
   });
 }
@@ -1067,12 +1076,15 @@ function renderDetectedCards() {
       + '<div class="detected-meta">' + escHtml(meta) + '</div></div>'
       + '<span class="event-type-tag ' + (typeClass[ev.type] || 'type-other') + '">' + (typeIcon[ev.type] || '') + (typeLabel[ev.type] || 'Event') + '</span>'
       + '</div>'
+      + '<div class="allday-row"><input type="checkbox" class="allday-cb" id="eallday-' + i + '" data-i="' + i + '">'
+      + '<label for="eallday-' + i + '">All-day event</label></div>'
       + '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="et-' + i + '" value="' + escAttr(ev.title) + '"></div>'
       + (function() { var sp = _parseISO(ev.startISO), ep = _parseISO(ev.endISO);
          return '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="esd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
-         + '<div class="edit-row-2"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
-         + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'; })()
+         + '<div class="edit-row-2 edit-times-row"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
+         + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'
+         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ep.date) + '"></div>'; })()
       + '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="el-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
       + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="en-' + i + '">' + escHtml(ev.notes || '') + '</textarea></div>'
       + '</div></div>';
@@ -1106,7 +1118,61 @@ function renderDetectedCards() {
   });
   document.getElementById('retry-btn').addEventListener('click', () => { loadedFiles.length ? runExtract() : runScan(); });
   document.getElementById('add-cal-btn').addEventListener('click', addToCalendar);
+  document.querySelectorAll('.allday-cb').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const i = e.target.getAttribute('data-i');
+      const card = document.getElementById('dc-' + i);
+      const checked = e.target.checked;
+      if (checked) {
+        card.setAttribute('data-allday', '1');
+        if (!cb.dataset.injected) {
+          const notesEl = document.getElementById('en-' + i);
+          const ev = detectedEvents[i];
+          try {
+            const origStart = new Date(ev.startISO).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const origEnd = new Date(ev.endISO).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const line = 'Original times: ' + origStart + ' – ' + origEnd;
+            if (notesEl && !notesEl.value.includes(line)) {
+              notesEl.value = line + (notesEl.value ? '\n\n' + notesEl.value : '');
+            }
+            cb.dataset.injected = '1';
+          } catch(_) {}
+        }
+      } else {
+        card.removeAttribute('data-allday');
+      }
+      updateCardMeta(i);
+    });
+  });
+  document.querySelectorAll('input[id^="eed-"]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const i = inp.id.replace('eed-', '');
+      const cb = document.getElementById('eallday-' + i);
+      if (cb && cb.checked) updateCardMeta(i);
+    });
+  });
   updateAddBtn();
+}
+
+function updateCardMeta(i) {
+  const card = document.getElementById('dc-' + i);
+  if (!card) return;
+  const metaEl = card.querySelector('.detected-meta');
+  if (!metaEl) return;
+  const ev = detectedEvents[i];
+  const allDay = card.getAttribute('data-allday') === '1';
+  try {
+    if (allDay) {
+      const startDateStr = (document.getElementById('esd-' + i) || {}).value || ev.startISO.slice(0, 10);
+      const endDateStr = (document.getElementById('eed-' + i) || {}).value || ev.endISO.slice(0, 10);
+      const sameDay = startDateStr === endDateStr;
+      metaEl.textContent = sameDay
+        ? fmtD(startDateStr + 'T12:00:00') + ' · All day'
+        : fmtD(startDateStr + 'T12:00:00') + ' → ' + fmtD(endDateStr + 'T12:00:00') + ' · All day';
+    } else {
+      metaEl.textContent = fmtD(ev.startISO) + ' · ' + fmtT(ev.startISO) + '–' + fmtT(ev.endISO);
+    }
+  } catch(_) {}
 }
 
 function updateAddBtn() {
@@ -1132,19 +1198,40 @@ async function addToCalendar() {
   const selectedEvents = detectedEvents
     .map((ev, i) => ({ ev, i }))
     .filter(({ i }) => document.getElementById('ck-' + i) && document.getElementById('ck-' + i).checked)
-    .map(({ ev, i }) => ({
-      title:   document.getElementById('et-' + i).value.trim() || ev.title,
-      startISO: (function() { var d = document.getElementById('esd-' + i), t = document.getElementById('est-' + i); return d && t && d.value && t.value ? d.value + 'T' + t.value + ':00' + (t.getAttribute('data-tz') || '') : ev.startISO; })(),
-      endISO:   (function() { var d = document.getElementById('esd-' + i), t = document.getElementById('eet-' + i); return d && t && d.value && t.value ? d.value + 'T' + t.value + ':00' + (t.getAttribute('data-tz') || '') : ev.endISO; })(),
-      location: document.getElementById('el-' + i).value.trim() || ev.location || '',
-      notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
-      sourceFileIdx: ev.sourceFileIdx
-    }));
+    .map(({ ev, i }) => {
+      const card = document.getElementById('dc-' + i);
+      const allDay = !!(card && card.getAttribute('data-allday') === '1');
+      const sdEl = document.getElementById('esd-' + i);
+      const edEl = document.getElementById('eed-' + i);
+      const stEl = document.getElementById('est-' + i);
+      const etEl = document.getElementById('eet-' + i);
+      let startISO, endISO;
+      if (allDay) {
+        startISO = (sdEl && sdEl.value) || ev.startISO.slice(0, 10);
+        endISO   = (edEl && edEl.value) || startISO;
+      } else {
+        startISO = sdEl && stEl && sdEl.value && stEl.value
+          ? sdEl.value + 'T' + stEl.value + ':00' + (stEl.getAttribute('data-tz') || '')
+          : ev.startISO;
+        endISO   = sdEl && etEl && sdEl.value && etEl.value
+          ? sdEl.value + 'T' + etEl.value + ':00' + (etEl.getAttribute('data-tz') || '')
+          : ev.endISO;
+      }
+      return {
+        title:    document.getElementById('et-' + i).value.trim() || ev.title,
+        startISO: startISO,
+        endISO:   endISO,
+        location: document.getElementById('el-' + i).value.trim() || ev.location || '',
+        notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
+        allDay:   allDay,
+        sourceFileIdx: ev.sourceFileIdx
+      };
+    });
 
   // If not signed in — use URL fallback (can't target a specific calendar)
   if (!googleAccount || !selectedCalendarId) {
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
     });
     if (btn) btn.disabled = false;
     return;
@@ -1158,7 +1245,7 @@ async function addToCalendar() {
     showResult('<div class="warn-box"><strong>Google connection lost</strong><br>Please sign out and reconnect Google to use file attachments, or <button class="text-btn" id="fallback-url-btn">add without attachment</button>.</div>');
     document.getElementById('fallback-url-btn').addEventListener('click', () => {
       selectedEvents.forEach(ev => {
-        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
       });
     });
     if (btn) btn.disabled = false;
@@ -1220,7 +1307,7 @@ function showDriveError(selectedEvents, token, message) {
     results.querySelector('.warn-box').remove();
     // Fall back to URL for all selected
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
     });
   });
 }

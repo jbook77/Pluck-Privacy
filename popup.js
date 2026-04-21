@@ -853,8 +853,8 @@ function renderTravelCards(events) {
       + '<div class="event-top"><span class="event-icon">' + icon + '</span>'
       + '<span class="event-title">' + escHtml(ev.title) + '</span>'
       + '<span class="tag ' + tagClass + '">' + (hotel ? hotelTagSVG : flightTagSVG) + tagLabel.toUpperCase() + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Departs</span><span class="field-val">' + fmtD(s) + ', ' + fmtT(s) + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Arrives</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
+      + '<div class="field-row"><span class="field-label">' + (hotel ? 'Check-in' : 'Departs') + '</span><span class="field-val">' + fmtD(s) + (hotel ? '' : ', ' + fmtT(s)) + '</span></div>'
+      + '<div class="field-row"><span class="field-label">' + (hotel ? 'Check-out' : 'Arrives') + '</span><span class="field-val">' + fmtD(e2) + (hotel ? '' : ', ' + fmtT(e2)) + '</span></div>'
       + (passengerCount ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + passengerCount + '</span></div>' : '')
       + editPanelHtml
       + '<button class="travel-edit-toggle" data-i="' + i + '">✎ Edit</button>'

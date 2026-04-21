@@ -794,6 +794,18 @@ function gcalUrl(title, startISO, endISO, location, details) {
 // ─── Render: travel cards ─────────────────────────────────────────────────────
 function renderTravelCards(events) {
   if (!events.length) { showResult('<div class="error-box">No travel events found.</div>'); return; }
+  function _parseISO(iso) {
+    if (!iso) return { date: '', time: '', tz: '' };
+    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
+    if (!m) return { date: '', time: '', tz: '' };
+    return { date: m[1], time: m[2], tz: m[3] || '' };
+  }
+  function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
+  function _buildDateOnlyISO(date, originalISO) {
+    // Keep the original time-of-day and tz, only replace the date portion
+    const parts = _parseISO(originalISO);
+    return date + 'T' + (parts.time || '00:00') + ':00' + (parts.tz || '');
+  }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
   const fmtT = d => new Date(d).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
   const calSVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
@@ -816,26 +828,92 @@ function renderTravelCards(events) {
     const icon = hotel ? hotelSVG : flightSVG;
     const tagClass = hotel ? 'tag-hotel' : (charter ? 'tag-charter' : 'tag-flight');
     const tagLabel = hotel ? 'Hotel' : (charter ? 'Charter' : 'Flight');
-    const passengerCount = charter
-      ? (ev.passengers && ev.passengers.length ? ev.passengers.length : 0)
-      : (ev.passengers && ev.passengers.length ? ev.passengers.length : 0);
+    const passengerCount = ev.passengers && ev.passengers.length ? ev.passengers.length : 0;
     const cardClass = hotel ? 'hotel' : (charter ? 'charter' : 'flight');
-    html += '<div class="event-card ' + cardClass + '">'
+    const sp = _parseISO(s), ep = _parseISO(e2);
+    const notesPrefill = buildTravelDetails(ev);
+
+    let editPanelHtml = '<div class="edit-panel">'
+      + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="tvt-' + i + '" value="' + escAttr(ev.title) + '"></div>';
+
+    if (hotel) {
+      editPanelHtml += '<div class="edit-row"><div class="edit-label">Check-in date</div><input type="date" class="edit-input" id="tvsd-' + i + '" value="' + escAttr(sp.date) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
+        + '<div class="edit-row"><div class="edit-label">Check-out date</div><input type="date" class="edit-input" id="tved-' + i + '" value="' + escAttr(ep.date) + '" data-tz="' + escAttr(ep.tz) + '"></div>';
+    } else {
+      editPanelHtml += '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="tvsd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
+        + '<div class="edit-row-2"><div><div class="edit-label">Depart</div><input type="time" class="edit-input" id="tvst-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
+        + '<div><div class="edit-label">Arrive</div><input type="time" class="edit-input" id="tvet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>';
+    }
+
+    editPanelHtml += '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="tvl-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
+      + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="tvn-' + i + '">' + escHtml(notesPrefill) + '</textarea></div>'
+      + '</div>';
+
+    html += '<div class="event-card ' + cardClass + '" id="tev-' + i + '">'
       + '<div class="event-top"><span class="event-icon">' + icon + '</span>'
       + '<span class="event-title">' + escHtml(ev.title) + '</span>'
       + '<span class="tag ' + tagClass + '">' + (hotel ? hotelTagSVG : flightTagSVG) + tagLabel.toUpperCase() + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Departs</span><span class="field-val">' + fmtD(s) + ', ' + fmtT(s) + '</span></div>'
-      + '<div class="field-row"><span class="field-label">Arrives</span><span class="field-val">' + (hotel ? fmtD(e2) : fmtD(e2) + ', ' + fmtT(e2)) + '</span></div>'
+      + '<div class="field-row"><span class="field-label">' + (hotel ? 'Check-in' : 'Departs') + '</span><span class="field-val">' + fmtD(s) + (hotel ? '' : ', ' + fmtT(s)) + '</span></div>'
+      + '<div class="field-row"><span class="field-label">' + (hotel ? 'Check-out' : 'Arrives') + '</span><span class="field-val">' + fmtD(e2) + (hotel ? '' : ', ' + fmtT(e2)) + '</span></div>'
       + (passengerCount ? '<div class="field-row"><span class="field-label">Passengers</span><span class="field-val">' + passengerCount + '</span></div>' : '')
+      + editPanelHtml
+      + '<button class="travel-edit-toggle" data-i="' + i + '">✎ Edit</button>'
       + '<button class="cal-btn travel-cal-btn" data-i="' + i + '">' + calSVG + '<span class="cal-btn-label"> Add to Google Calendar</span></button>'
       + '</div>';
   });
   showResult(html);
+  document.querySelectorAll('.travel-edit-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.getAttribute('data-i');
+      const card = document.getElementById('tev-' + idx);
+      if (!card) return;
+      const isOpen = card.classList.toggle('travel-edit-open');
+      btn.textContent = isOpen ? '▴ Collapse' : '✎ Edit';
+    });
+  });
   document.querySelectorAll('.travel-cal-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.getAttribute('data-i'));
       const ev = events[idx];
-      await addTravelEventToCalendar(ev);
+      const card = document.getElementById('tev-' + idx);
+      const isEdited = card && card.classList.contains('travel-edit-open');
+      if (!isEdited) { await addTravelEventToCalendar(ev); return; }
+
+      const hotel = ev.type === 'hotel';
+      const titleEl = document.getElementById('tvt-' + idx);
+      const sdEl = document.getElementById('tvsd-' + idx);
+      const edEl = hotel ? document.getElementById('tved-' + idx) : null;
+      const stEl = hotel ? null : document.getElementById('tvst-' + idx);
+      const etEl = hotel ? null : document.getElementById('tvet-' + idx);
+      const locEl = document.getElementById('tvl-' + idx);
+      const notesEl = document.getElementById('tvn-' + idx);
+
+      const title = (titleEl && titleEl.value.trim()) || ev.title;
+      let startISO = ev.startISO;
+      let endISO = ev.endISO;
+      if (hotel) {
+        if (sdEl && sdEl.value) startISO = _buildDateOnlyISO(sdEl.value, ev.startISO);
+        if (edEl && edEl.value) endISO = _buildDateOnlyISO(edEl.value, ev.endISO);
+      } else {
+        if (sdEl && stEl && sdEl.value && stEl.value) {
+          startISO = _buildISO(sdEl.value, stEl.value, stEl.getAttribute('data-tz') || '');
+        }
+        if (sdEl && etEl && sdEl.value && etEl.value) {
+          endISO = _buildISO(sdEl.value, etEl.value, etEl.getAttribute('data-tz') || '');
+        }
+      }
+      const location = (locEl && locEl.value.trim()) || ev.location || '';
+      const notes = notesEl ? notesEl.value : '';
+
+      const editedEv = Object.assign({}, ev, {
+        title: title,
+        startISO: startISO,
+        endISO: endISO,
+        location: location,
+        baseDetails: notes,
+        passengers: []
+      });
+      await addTravelEventToCalendar(editedEv);
     });
   });
   updateTravelCalBtns();

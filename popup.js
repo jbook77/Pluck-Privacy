@@ -559,6 +559,8 @@ async function runExtract() {
     // If only travel files, run travel extraction
     const hasTravelOnly = travelFiles.length > 0 && eventFiles.length === 0;
 
+    let usedFallback = false;
+    const markFallback = () => { usedFallback = true; };
     try {
       if (hasTravelOnly) {
         setStatus('Extracting travel events...', 'loading');
@@ -568,7 +570,7 @@ async function runExtract() {
           const parsed = await callGemini(apiKey, [
             { inline_data: { mime_type: f.mimeType, data: f.base64 } },
             { text: TRAVEL_PROMPT }
-          ]);
+          ], retryStatus, markFallback);
           const tagged = (parsed.events || []).map(ev => ({ ...ev, sourceFileIdx: fIdx }));
           allEvents.push(...tagged);
         }
@@ -602,7 +604,7 @@ async function runExtract() {
               { text: DETECT_PROMPT }
             ];
           }
-          const parsed = await callGemini(apiKey, parts);
+          const parsed = await callGemini(apiKey, parts, retryStatus, markFallback);
           const tagged = (parsed.events || []).map(ev =>
             fIdx !== undefined ? { ...ev, sourceFileIdx: fIdx } : ev
           );
@@ -614,9 +616,10 @@ async function runExtract() {
         collapseDropZone('files');
       }
       setStatus('', '');
+      if (usedFallback) showFallbackBanner();
     } catch(e) {
       setStatus('', '');
-      showResult('<div class="error-box">Error: ' + escHtml(e.message) + '</div>');
+      showErrorWithRetry(e.message, runExtract);
     }
     document.getElementById('extract-btn').disabled = false;
   });
@@ -696,36 +699,68 @@ async function runScan() {
       }
 
       setStatus('Detecting events...', 'loading');
+      let usedFallback = false;
       const parsed = await callGemini(apiKey, [
         { text: DETECT_PROMPT + '\n\nPage: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText }
-      ]);
+      ], retryStatus, () => { usedFallback = true; });
       detectedEvents = parsed.events || [];
       await tryAutoSelectCalendar(detectedEvents);
       setStatus('', '');
       renderDetectedCards();
       collapseDropZone('scan');
+      if (usedFallback) showFallbackBanner();
     } catch(e) {
       setStatus('', '');
-      showResult('<div class="error-box">' + escHtml(e.message) + '</div>');
+      showErrorWithRetry(e.message, runScan);
     }
     document.getElementById('scan-btn').disabled = false;
   });
 }
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
-async function callGemini(apiKey, parts) {
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 8192 } }) }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err.error && err.error.message) ? err.error.message : 'Gemini API error ' + res.status);
+async function callGemini(apiKey, parts, onRetry, onFallback) {
+  const modelChain = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+  const body = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 8192 } });
+  const delays = [1000, 2000, 4000];
+  let lastErrorMsg = '';
+  for (let m = 0; m < modelChain.length; m++) {
+    const model = modelChain[m];
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      let res = null, networkFailed = false;
+      try {
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      } catch(e) {
+        networkFailed = true;
+      }
+      const retryable = networkFailed || (res && (res.status === 503 || res.status === 429 || res.status === 500));
+      if (retryable && attempt < delays.length) {
+        const wait = delays[attempt];
+        if (onRetry) onRetry(attempt + 1, delays.length, wait, model);
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      // Retryable but retries exhausted — fall through to next model if available
+      if (retryable && m < modelChain.length - 1) {
+        lastErrorMsg = networkFailed ? 'Network error' : ('Status ' + res.status);
+        break;
+      }
+      if (networkFailed) throw new Error('Network error — check your connection and try again.');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (err.error && err.error.message) ? err.error.message : 'Gemini API error ' + res.status;
+        if (res.status === 503) throw new Error('Gemini is overloaded (503), even the backup model. Try again in a moment.');
+        if (res.status === 429) throw new Error('Rate limit hit (429). Wait a minute and try again.');
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const raw = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(raw);
+      if (m > 0 && onFallback) onFallback(model);
+      return parsed;
+    }
   }
-  const data = await res.json();
-  const raw = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-  return JSON.parse(raw);
+  throw new Error('All models unavailable (' + lastErrorMsg + '). Try again in a few minutes.');
 }
 
 // ─── Travel helpers ───────────────────────────────────────────────────────────
@@ -1114,6 +1149,26 @@ function showDriveError(selectedEvents, token, message) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function showResult(html) { document.getElementById('results').innerHTML = html; }
+function showErrorWithRetry(message, retryFn) {
+  const html = '<div class="error-box">' + escHtml(message)
+    + '<div style="margin-top:8px;"><button class="text-btn" id="err-retry-btn" style="font-size:12px;">Try again</button></div></div>';
+  showResult(html);
+  const btn = document.getElementById('err-retry-btn');
+  if (btn) btn.addEventListener('click', () => { showResult(''); retryFn(); });
+}
+function retryStatus(attempt, total, waitMs, model) {
+  const label = (model && model.includes('lite')) ? 'Backup model busy' : 'Model busy';
+  setStatus(label + ' — retrying (' + attempt + '/' + total + ') in ' + Math.round(waitMs / 1000) + 's…', 'loading');
+}
+function showFallbackBanner() {
+  const results = document.getElementById('results');
+  if (!results || document.getElementById('fallback-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'fallback-banner';
+  banner.className = 'warn-box';
+  banner.innerHTML = '<strong>⚠ Results may be less accurate</strong>Our main AI was busy, so we used a backup. Please double-check dates, times, and passenger details before saving.';
+  results.insertBefore(banner, results.firstChild);
+}
 function clearResults() { document.getElementById('results').innerHTML = ''; setStatus('', ''); expandDropZone(); }
 
 // ─── Drop-zone collapse / expand ─────────────────────────────────────────────

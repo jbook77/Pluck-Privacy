@@ -9,3 +9,6 @@ Publishing docs/
 # Private sample travel docs (contain real booking info — reference only)
 docs/*.pdf
 docs/*.eml
+
+# Local website experiments — live site lives in Pluck-Privacy root
+website/

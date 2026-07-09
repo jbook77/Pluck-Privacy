@@ -11,7 +11,7 @@ let autoExtractDebounce = null;
 const TODAY = new Date().toISOString().split('T')[0];
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-const TRAVEL_PROMPT = 'You are a travel data extractor. Extract all flights, hotel stays, and private/charter flights from the provided document. Return ONLY valid JSON, no markdown, no code fences.\n\nFormat:\n{"events":[{"type":"flight" or "hotel" or "charter","title":"...","startISO":"ISO8601 with tz offset","endISO":"ISO8601 with tz offset","location":"...","flightKey":"...","flightNumber":"...","departureDate":"YYYY-MM-DD","origin":"city","destination":"city","passengers":[...],"baseDetails":"...","isQuote":false}]}\n\n--- COMMERCIAL FLIGHTS (type: "flight") ---\nflightKey: AIRLINECODE+FLIGHTNUMBER+DATE e.g. AA1692-2026-03-27\nflightNumber: e.g. AA1692\nTitle: Fly [ORIGIN] to [DEST] ([2-LETTER AIRLINE CODE] [NUMBER]) — use IATA airline code only, never full airline name. e.g. Fly Newark to Miami (AA 1692)\nbaseDetails (each on its own line, no passengers here):\n[City, State-abbrev-or-2-letter-country-code] ([IATA]) - [City, State-abbrev-or-2-letter-country-code] ([IATA])\ne.g. New York City, NY (JFK) - Buenos Aires, AR (EZE)\n[Depart time]-[Arrive time] local\n[X]hr [Y]min flight\nCabin Class: [CLASS]\npassengers: [{"name":"...","seat":"...","confirmationCode":"..."}]\n\n--- HOTELS (type: "hotel") ---\nTitle: Stay at [HOTEL NAME]\nbaseDetails:\n[Address]\nCheck-In: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nCheck-Out: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nConfirmation: [NUMBER]\nRoom: [TYPE]\nGuests: [N] Adults\n\n--- PRIVATE / CHARTER JETS (type: "charter") ---\nIdentified by: tail numbers (N-numbers), FBO names, "leg" numbering, charter company names, no scheduled airline code.\nflightKey: "charter-[tailNumber or referenceId]-[originICAO]-[YYYY-MM-DD]" e.g. "charter-N609RC-KMJX-2025-08-18"\nTitle: Private: [Departure City, State] to [Arrival City, State] ([ORIGIN ICAO] → [DEST ICAO])\ne.g. Private: Toms River, NJ to Monticello, NY (KMJX → KMSV)\nlocation: departure FBO full address\nisQuote: true if document is a quote/estimate/unconfirmed, false if confirmed booking\npassengers: ["First Last", ...] (names only — no seats for charter)\nbaseDetails:\n[Aircraft Type] | [Tail Number or "N/A"]\nProvider: [Charter company name] (Ref: [reference/trip number])\n\nDEPARTURE FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nARRIVAL FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nPassengers ([N]):\n[numbered list, one per line]\n\nExtract EACH leg as a separate charter event. If no tail number, omit that field.\n\n--- PASSENGER NAME RULES (commercial flights only) ---\nAirline tickets use LASTNAME/GIVEN1 GIVEN2 format. (1) If surname has numeral suffix (II, III, Jr, Sr): use LAST given name, keep suffix: JONAS II/PAUL KEVIN → Kevin Jonas II. (2) Otherwise: use FIRST given name, drop middle names: WEIR/GEORGE CYRIL → George Weir.\n\nTimezones (spring/summer DST): New York=-04:00, LA=-07:00, London=+01:00, Buenos Aires=-03:00, Dubai=+04:00.\nIf nothing found: {"events":[]}';
+const TRAVEL_PROMPT = 'You are a travel data extractor. Extract all flights, hotel stays, and private/charter flights from the provided document. Return ONLY valid JSON, no markdown, no code fences.\n\nFormat:\n{"events":[{"type":"flight" or "hotel" or "charter","title":"...","startISO":"ISO8601 with tz offset","endISO":"ISO8601 with tz offset","startTimeZone":"IANA name for departure city e.g. America/Los_Angeles","endTimeZone":"IANA name for arrival city e.g. America/New_York","location":"...","flightKey":"...","flightNumber":"...","departureDate":"YYYY-MM-DD","origin":"city","destination":"city","passengers":[...],"baseDetails":"...","isQuote":false}]}\n\nFor flights and charter: startTimeZone = origin city zone, endTimeZone = destination city zone (different zones for cross-zone flights). For hotels: both = hotel city zone. The offsets in startISO/endISO MUST match the named zones for the given date.\n\n--- COMMERCIAL FLIGHTS (type: "flight") ---\nflightKey: AIRLINECODE+FLIGHTNUMBER+DATE e.g. AA1692-2026-03-27\nflightNumber: e.g. AA1692\nTitle: Fly [ORIGIN] to [DEST] ([2-LETTER AIRLINE CODE] [NUMBER]) — use IATA airline code only, never full airline name. e.g. Fly Newark to Miami (AA 1692)\nbaseDetails (each on its own line, no passengers here):\n[City, State-abbrev-or-2-letter-country-code] ([IATA]) - [City, State-abbrev-or-2-letter-country-code] ([IATA])\ne.g. New York City, NY (JFK) - Buenos Aires, AR (EZE)\n[Depart time]-[Arrive time] local\n[X]hr [Y]min flight\nCabin Class: [CLASS]\npassengers: [{"name":"...","seat":"...","confirmationCode":"..."}]\n\n--- HOTELS (type: "hotel") ---\nTitle: Stay at [HOTEL NAME]\nbaseDetails:\n[Address]\nCheck-In: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nCheck-Out: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nConfirmation: [NUMBER]\nRoom: [TYPE]\nGuests: [N] Adults\n\n--- PRIVATE / CHARTER JETS (type: "charter") ---\nIdentified by: tail numbers (N-numbers), FBO names, "leg" numbering, charter company names, no scheduled airline code.\nflightKey: "charter-[tailNumber or referenceId]-[originICAO]-[YYYY-MM-DD]" e.g. "charter-N609RC-KMJX-2025-08-18"\nTitle: Private: [Departure City, State] to [Arrival City, State] ([ORIGIN ICAO] → [DEST ICAO])\ne.g. Private: Toms River, NJ to Monticello, NY (KMJX → KMSV)\nlocation: departure FBO full address\nisQuote: true if document is a quote/estimate/unconfirmed, false if confirmed booking\npassengers: ["First Last", ...] (names only — no seats for charter)\nbaseDetails:\n[Aircraft Type] | [Tail Number or "N/A"]\nProvider: [Charter company name] (Ref: [reference/trip number])\n\nDEPARTURE FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nARRIVAL FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nPassengers ([N]):\n[numbered list, one per line]\n\nExtract EACH leg as a separate charter event. If no tail number, omit that field.\n\n--- PASSENGER NAME RULES (commercial flights only) ---\nAirline tickets use LASTNAME/GIVEN1 GIVEN2 format. (1) If surname has numeral suffix (II, III, Jr, Sr): use LAST given name, keep suffix: JONAS II/PAUL KEVIN → Kevin Jonas II. (2) Otherwise: use FIRST given name, drop middle names: WEIR/GEORGE CYRIL → George Weir.\n\nTimezones (spring/summer DST): New York=-04:00, LA=-07:00, London=+01:00, Buenos Aires=-03:00, Dubai=+04:00.\nIf nothing found: {"events":[]}';
 
 const DETECT_PROMPT = `You are an event extractor. Today is ${TODAY}. Extract ALL events, appointments, reservations, and meetings from the content. Return ONLY valid JSON, no markdown, no code fences.
 
@@ -21,6 +21,7 @@ Format:
   "title": "concise natural title e.g. Dinner at Soho House or Zoom - Copper Cup x Body Brokers",
   "startISO": "ISO8601 with tz offset. Infer tz from location (NY spring=-04:00, LA spring=-07:00). If only day-of-week, use next upcoming date from today.",
   "endISO": "ISO8601. Infer if missing: dinner=2hr, party=3hr, pickup=1hr, meeting=1hr, grooming=45min, styling=1.5hr, performance=2hr, photo=3hr, interview=1hr, appointment=1hr",
+  "timeZone": "IANA name for the event location e.g. America/New_York, America/Los_Angeles, Europe/London. Must match the offset in startISO/endISO.",
   "location": "full address, Zoom link, or venue name",
   "notes": "confirmation number, party size, zoom passcode, provider name, guest/invitee list, special notes. One per line.",
   "confidence": "high | medium | low"
@@ -1002,12 +1003,13 @@ async function addTravelEventToCalendar(ev) {
     }
   } catch(e) {
     setStatus('', '');
+    console.error('Drive upload failed:', e);
     const btn = document.querySelector('.travel-cal-btn[data-i]');
     if (btn) {
       const wrap = document.createElement('div');
       wrap.className = 'warn-box';
       wrap.style.marginTop = '6px';
-      wrap.innerHTML = 'Upload failed. <button class="text-btn" id="tv-retry">Retry</button> or <button class="text-btn" id="tv-skip">add without attachment</button>';
+      wrap.innerHTML = 'Upload failed (' + escHtml(e.message) + '). <button class="text-btn" id="tv-retry">Retry</button> or <button class="text-btn" id="tv-skip">add without attachment</button>';
       btn.parentNode.insertBefore(wrap, btn.nextSibling);
       document.getElementById('tv-retry').addEventListener('click', () => { wrap.remove(); addTravelEventToCalendar(ev); });
       document.getElementById('tv-skip').addEventListener('click', () => { wrap.remove(); chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false }); });
@@ -1018,7 +1020,9 @@ async function addTravelEventToCalendar(ev) {
   setStatus('Creating event...', 'loading');
   try {
     const created = await createCalendarEvent(token, selectedCalendarId, {
-      title: ev.title, startISO: s, endISO: e2, location: ev.location || '', notes: details
+      title: ev.title, startISO: s, endISO: e2,
+      startTimeZone: ev.startTimeZone, endTimeZone: ev.endTimeZone,
+      location: ev.location || '', notes: details
     }, fileIds);
     setStatus('', '');
     chrome.tabs.create({ url: created.htmlLink, active: false });
@@ -1221,6 +1225,8 @@ async function addToCalendar() {
         title:    document.getElementById('et-' + i).value.trim() || ev.title,
         startISO: startISO,
         endISO:   endISO,
+        startTimeZone: ev.timeZone,
+        endTimeZone:   ev.timeZone,
         location: document.getElementById('el-' + i).value.trim() || ev.location || '',
         notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
         allDay:   allDay,

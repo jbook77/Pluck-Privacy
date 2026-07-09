@@ -112,7 +112,9 @@ async function createCalendarEvent(token, calendarId, eventData, fileIds) {
     event.end = { date: endPlus.toISOString().slice(0, 10) };
   } else {
     event.start = { dateTime: eventData.startISO };
+    if (eventData.startTimeZone) event.start.timeZone = eventData.startTimeZone;
     event.end = { dateTime: eventData.endISO };
+    if (eventData.endTimeZone) event.end.timeZone = eventData.endTimeZone;
   }
   if (fileIds && fileIds.length) {
     event.attachments = fileIds.map(id => ({

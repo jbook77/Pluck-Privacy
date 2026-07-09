@@ -1,5 +1,7 @@
 'use strict';
 
+importScripts('extraction.js');
+
 // Allow popup to access chrome.storage.session (MV3 requires explicit opt-in)
 chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
 
@@ -22,6 +24,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .then(result => sendResponse({ ok: true, ...result }))
       .catch(e   => sendResponse({ ok: false, error: e.message }));
     return true;
+  }
+
+  if (msg.type === 'RUN_EXTRACT') {
+    _runBackgroundExtract();   // results flow through pluck_state, not the response
+    sendResponse({ ok: true });
+    return false;
   }
 });
 
@@ -51,6 +59,19 @@ function _getToken(interactive) {
       }
     });
   });
+}
+
+async function _patchPluckState(patch) {
+  const r = await chrome.storage.session.get('pluck_state');
+  const state = r.pluck_state || {};
+  Object.assign(state, patch, { updatedAt: Date.now() });
+  try {
+    await chrome.storage.session.set({ pluck_state: state });
+  } catch (e) {
+    // Storage quota exceeded (huge batch) — popup falls back to in-memory state
+    console.error('pluck_state save failed:', e);
+  }
+  return state;
 }
 
 async function _fetchUserInfo(token) {
@@ -219,6 +240,43 @@ async function _fetchGmailBody(messageId) {
   // Extract body text from message parts
   const text = _extractBodyText(msgJson.payload);
   return { text, subject, from, date };
+}
+
+async function _runBackgroundExtract() {
+  // Keep service worker alive during long Gemini calls (MV3 idles out after ~30s)
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
+  try {
+    const r = await chrome.storage.session.get('pluck_state');
+    const files = (r.pluck_state && r.pluck_state.loadedFiles) || [];
+    const k = await chrome.storage.local.get('gemini_api_key');
+    if (!files.length) throw new Error('Please add at least one file.');
+    if (!k.gemini_api_key) throw new Error('Please save your Gemini API key first.');
+
+    let usedFallback = false;
+    const onStatus = (text) => { _patchPluckState({ statusText: text }); };
+    const onRetry = (attempt, total) => {
+      _patchPluckState({ statusText: 'Busy — retrying (' + attempt + ' of ' + total + ')...' });
+    };
+    const result = await extractFromFiles(files, k.gemini_api_key, onStatus, onRetry, () => { usedFallback = true; });
+
+    const patch = { phase: 'done', mode: result.mode, usedFallback, statusText: '', error: null,
+                    travelEvents: null, detectedEvents: null, mismatches: null };
+    if (result.mode === 'travel') {
+      patch.mismatches = checkMismatches(result.events);
+      if (!patch.mismatches) patch.travelEvents = mergeFlights(result.events);
+    } else {
+      patch.detectedEvents = result.events;
+    }
+    await _patchPluckState(patch);
+  } catch (e) {
+    await _patchPluckState({ phase: 'error', error: e.message, statusText: '' });
+  } finally {
+    clearInterval(keepAlive);
+    // Badge tells the user results (or an error) are waiting if the popup is closed.
+    // The popup clears it when it renders them.
+    await chrome.action.setBadgeText({ text: '!' });
+    await chrome.action.setBadgeBackgroundColor({ color: '#D4A830' });
+  }
 }
 
 function _extractBodyText(payload) {

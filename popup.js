@@ -7,6 +7,8 @@ let googleAccount  = null;   // { email, name } or null
 let googleCalendars = [];    // [{ id, name, color }]
 let selectedCalendarId = null;
 let autoExtractDebounce = null;
+let travelEvents = [];    // merged travel events (restored or from background)
+let currentPhase = 'idle'; // guards storage.onChanged re-render loops
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('url-btn').addEventListener('click', fetchUrl);
   document.getElementById('url-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchUrl(); });
-  document.getElementById('change-files-link').addEventListener('click', () => { expandDropZone(); clearResults(); });
+  document.getElementById('change-files-link').addEventListener('click', () => { expandDropZone(); clearResults(); clearPluckState(); });
 
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
@@ -102,6 +104,24 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'GMAIL_FILES_READY') {
       _pickUpPendingGmailFiles();
+    }
+  });
+
+  // Live updates while extraction runs in the background worker
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'session' || !changes.pluck_state) return;
+    const st = changes.pluck_state.newValue;
+    if (!st) { currentPhase = 'idle'; return; }
+    if (st.phase === 'extracting') {
+      currentPhase = 'extracting';
+      setStatus(st.statusText || 'Working...', 'loading');
+      return;
+    }
+    // Only render on the transition out of 'extracting' — edits we save
+    // ourselves also fire this listener and must not re-render.
+    if ((st.phase === 'done' || st.phase === 'error') && currentPhase === 'extracting') {
+      currentPhase = st.phase;
+      renderStoredResults(st);
     }
   });
 });
@@ -375,6 +395,7 @@ function loadFile(file, autoExtract = false) {
       previewSrc: isImage ? dataUrl : null
     };
     loadedFiles.push(entry);
+    patchPluckState({ loadedFiles: loadedFiles });
     renderFileList();
     document.getElementById('extract-btn').disabled = false;
     clearResults();
@@ -412,10 +433,13 @@ function removeFile(idx) {
   loadedFiles.splice(idx, 1);
   renderFileList();
   if (!loadedFiles.length) {
+    clearPluckState();
     document.getElementById('extract-btn').disabled = true;
     document.getElementById('drop-zone').classList.remove('has-files');
     document.getElementById('drop-label').textContent = 'Drop any file — PDF, email, image, or screenshot';
     clearResults();
+  } else {
+    patchPluckState({ loadedFiles: loadedFiles });
   }
 }
 
@@ -458,6 +482,7 @@ function handlePaste(e) {
         e.preventDefault();
         // Treat pasted text as an event-detection input
         loadedFiles.push({ name: 'Pasted text', base64: null, mimeType: 'text/plain', kind: 'text', text: text.trim() });
+        patchPluckState({ loadedFiles: loadedFiles });
         renderFileList();
         document.getElementById('extract-btn').disabled = false;
         clearResults();
@@ -490,6 +515,7 @@ function loadGmailFiles(files) {
     });
   });
   renderFileList();
+  patchPluckState({ loadedFiles: loadedFiles });
   document.getElementById('extract-btn').disabled = false;
   clearResults();
   flashDropZone();
@@ -506,88 +532,36 @@ async function _pickUpPendingGmailFiles() {
   loadGmailFiles(files);
 }
 
+async function patchPluckState(patch) {
+  const r = await new Promise(res => chrome.storage.session.get('pluck_state', res));
+  const state = r.pluck_state || {};
+  Object.assign(state, patch, { updatedAt: Date.now() });
+  try {
+    await new Promise(res => chrome.storage.session.set({ pluck_state: state }, res));
+  } catch (e) { /* quota exceeded — keep working in memory only */ }
+}
+
+function clearPluckState() {
+  currentPhase = 'idle';
+  chrome.storage.session.remove('pluck_state');
+}
+
 // ─── Main extraction ──────────────────────────────────────────────────────────
 async function runExtract() {
   if (!loadedFiles.length) { setStatus('Please add at least one file.', 'error'); return; }
-  chrome.storage.local.get('gemini_api_key', async (r) => {
-    const apiKey = r.gemini_api_key;
-    if (!apiKey) { setStatus('Please save your Gemini API key first.', 'error'); return; }
+  const r = await new Promise(res => chrome.storage.local.get('gemini_api_key', res));
+  if (!r.gemini_api_key) { setStatus('Please save your Gemini API key first.', 'error'); return; }
 
-    document.getElementById('extract-btn').disabled = true;
-    clearResults();
-
-    // Split files: travel docs vs images/text (event detection)
-    const travelFiles = loadedFiles.filter(f => f.kind === 'travel');
-    const eventFiles  = loadedFiles.filter(f => f.kind === 'image' || f.kind === 'text' || f.kind === 'event');
-
-    // If we have a mix, or only event files, run event detection
-    // If only travel files, run travel extraction
-    const hasTravelOnly = travelFiles.length > 0 && eventFiles.length === 0;
-
-    let usedFallback = false;
-    const markFallback = () => { usedFallback = true; };
-    try {
-      if (hasTravelOnly) {
-        setStatus('Extracting travel events...', 'loading');
-        const allEvents = [];
-        for (const f of travelFiles) {
-          const fIdx = loadedFiles.indexOf(f);
-          const parsed = await callGemini(apiKey, [
-            { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-            { text: TRAVEL_PROMPT }
-          ], retryStatus, markFallback);
-          const tagged = (parsed.events || []).map(ev => ({ ...ev, sourceFileIdx: fIdx }));
-          allEvents.push(...tagged);
-        }
-        const mismatches = checkMismatches(allEvents);
-        if (mismatches) {
-          let html = '<div class="warn-box"><strong>⚠ PDFs appear to be for different flights</strong>';
-          mismatches.forEach(m => { html += escHtml(m.field) + ': ' + escHtml(m.a) + ' vs ' + escHtml(m.b) + '<br>'; });
-          showResult(html + '</div>');
-        } else {
-          renderTravelCards(mergeFlights(allEvents));
-          tryAutoSelectCalendar(allEvents);
-          collapseDropZone('files');
-        }
-      } else {
-        // Event detection — process each file separately, combine results
-        setStatus('Detecting events...', 'loading');
-        const allEvents = [];
-        for (const f of [...travelFiles, ...eventFiles]) {
-          const fIdx = f.kind !== 'text' ? loadedFiles.indexOf(f) : undefined;
-          let parts;
-          if (f.kind === 'text') {
-            parts = [{ text: DETECT_PROMPT + '\n\nContent:\n' + f.text }];
-          } else if (f.kind === 'image') {
-            parts = [
-              { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-              { text: DETECT_PROMPT + '\n\nExtract all events visible in this image.' }
-            ];
-          } else {
-            parts = [
-              { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-              { text: DETECT_PROMPT }
-            ];
-          }
-          const parsed = await callGemini(apiKey, parts, retryStatus, markFallback);
-          const tagged = (parsed.events || []).map(ev =>
-            fIdx !== undefined ? { ...ev, sourceFileIdx: fIdx } : ev
-          );
-          allEvents.push(...tagged);
-        }
-        detectedEvents = allEvents;
-        await tryAutoSelectCalendar(detectedEvents);
-        renderDetectedCards();
-        collapseDropZone('files');
-      }
-      setStatus('', '');
-      if (usedFallback) showFallbackBanner();
-    } catch(e) {
-      setStatus('', '');
-      showErrorWithRetry(e.message, runExtract);
-    }
-    document.getElementById('extract-btn').disabled = false;
+  document.getElementById('extract-btn').disabled = true;
+  clearResults();
+  currentPhase = 'extracting';
+  await patchPluckState({
+    loadedFiles: loadedFiles, phase: 'extracting', statusText: 'Reading your files...',
+    mode: null, travelEvents: null, detectedEvents: null, mismatches: null,
+    usedFallback: false, error: null
   });
+  chrome.runtime.sendMessage({ type: 'RUN_EXTRACT' }, () => { void chrome.runtime.lastError; });
+  setStatus('Reading your files...', 'loading');
 }
 
 async function runScan() {
@@ -663,17 +637,16 @@ async function runScan() {
         throw new Error('Could not read this page. Try refreshing the tab, or paste content with Ctrl+V.');
       }
 
-      setStatus('Detecting events...', 'loading');
-      let usedFallback = false;
-      const parsed = await callGemini(apiKey, [
-        { text: DETECT_PROMPT + '\n\nPage: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText }
-      ], retryStatus, () => { usedFallback = true; });
-      detectedEvents = parsed.events || [];
-      await tryAutoSelectCalendar(detectedEvents);
-      setStatus('', '');
-      renderDetectedCards();
-      collapseDropZone('scan');
-      if (usedFallback) showFallbackBanner();
+      // Hand the page text to the shared background extraction flow
+      const scanEntry = {
+        name: 'Scanned: ' + (tab.title || 'page').slice(0, 60),
+        base64: null, mimeType: 'text/plain', kind: 'text',
+        text: 'Page: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText
+      };
+      loadedFiles.push(scanEntry);
+      renderFileList();
+      document.getElementById('extract-btn').disabled = false;
+      await runExtract();
     } catch(e) {
       setStatus('', '');
       showErrorWithRetry(e.message, runScan);
@@ -910,6 +883,34 @@ async function addTravelEventToCalendar(ev) {
     setStatus('', '');
     showResult('<div class="error-box">Calendar error: ' + escHtml(e.message) + '</div>');
   }
+}
+
+function renderStoredResults(st) {
+  setStatus('', '');
+  document.getElementById('extract-btn').disabled = false;
+  chrome.action.setBadgeText({ text: '' });
+  if (st.phase === 'error') {
+    showErrorWithRetry(st.error || 'Something went wrong. Please try again.', runExtract);
+    return;
+  }
+  if (st.mode === 'travel') {
+    if (st.mismatches) {
+      let html = '<div class="warn-box"><strong>⚠ PDFs appear to be for different flights</strong>';
+      st.mismatches.forEach(m => { html += escHtml(m.field) + ': ' + escHtml(m.a) + ' vs ' + escHtml(m.b) + '<br>'; });
+      showResult(html + '</div>');
+      return;
+    }
+    travelEvents = st.travelEvents || [];
+    renderTravelCards(travelEvents);
+    tryAutoSelectCalendar(travelEvents);
+    collapseDropZone('files');
+  } else {
+    detectedEvents = st.detectedEvents || [];
+    tryAutoSelectCalendar(detectedEvents);
+    renderDetectedCards();
+    collapseDropZone('files');
+  }
+  if (st.usedFallback) showFallbackBanner();
 }
 
 // ─── Render: detected event cards ─────────────────────────────────────────────
@@ -1206,10 +1207,6 @@ function showErrorWithRetry(message, retryFn) {
   showResult(html);
   const btn = document.getElementById('err-retry-btn');
   if (btn) btn.addEventListener('click', () => { showResult(''); retryFn(); });
-}
-function retryStatus(attempt, total, waitMs, model) {
-  const label = (model && model.includes('lite')) ? 'Backup model busy' : 'Model busy';
-  setStatus(label + ' — retrying (' + attempt + '/' + total + ') in ' + Math.round(waitMs / 1000) + 's…', 'loading');
 }
 function showFallbackBanner() {
   const results = document.getElementById('results');

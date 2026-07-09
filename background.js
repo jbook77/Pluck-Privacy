@@ -134,8 +134,10 @@ async function _fetchGmailAttachments(messageId) {
     if (!attRes.ok) throw new Error('Could not fetch attachment: ' + part.filename);
     const attData = await attRes.json();
 
-    // Gmail uses base64url — convert to standard base64
-    const base64 = attData.data.replace(/-/g, '+').replace(/_/g, '/');
+    // Gmail uses base64url with '=' padding stripped — convert to standard base64
+    // and restore padding, or Drive's upload parser rejects the file
+    let base64 = attData.data.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
     let mimeType = part.mimeType;
     if (mimeType === 'application/octet-stream' && part.filename.toLowerCase().endsWith('.pdf')) {
       mimeType = 'application/pdf';

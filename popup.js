@@ -1335,7 +1335,7 @@ function showDriveError(selectedEvents, token, message) {
     results.querySelector('.warn-box').remove();
     // Fall back to URL for all selected
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
     });
   });
 }

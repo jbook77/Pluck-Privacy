@@ -108,6 +108,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Persist inline edits so they survive the popup closing
+  const resultsEl = document.getElementById('results');
+  const applyEdit = (target) => {
+    const m = (target.id || '').match(/^(et|esd|est|eet|eed|el|en|etz|eallday|ck|tvt|tvsd|tvst|tvet|tved|tvl|tvn)-(\d+)$/);
+    if (!m) return;
+    const p = m[1], i = +m[2];
+    const dEv = detectedEvents[i], tEv = travelEvents[i];
+    if (p === 'et' && dEv) dEv.title = target.value;
+    else if (p === 'el' && dEv) dEv.location = target.value;
+    else if (p === 'en' && dEv) dEv.notes = target.value;
+    else if (p === 'ck' && dEv) dEv._selected = target.checked;
+    else if (p === 'eallday' && dEv) dEv._allDay = target.checked;
+    else if ((p === 'esd' || p === 'est' || p === 'eet' || p === 'eed') && dEv) {
+      const sp = parseISOParts(dEv.startISO), ep = parseISOParts(dEv.endISO);
+      const date = (document.getElementById('esd-' + i) || {}).value || sp.date;
+      const st = (document.getElementById('est-' + i) || {}).value || sp.time;
+      const et = (document.getElementById('eet-' + i) || {}).value || ep.time;
+      dEv.startISO = date + 'T' + st + ':00' + sp.tz;
+      dEv.endISO = date + 'T' + et + ':00' + ep.tz;
+      if (p === 'eed') dEv._endDate = target.value; // all-day end date
+    }
+    else if (p === 'etz' && dEv) dEv.timeZone = target.value;
+    else if (p === 'tvt' && tEv) tEv.title = target.value;
+    else if (p === 'tvl' && tEv) tEv.location = target.value;
+    else if (p === 'tvn' && tEv) tEv._editedNotes = target.value;
+    else if ((p === 'tvsd' || p === 'tvst' || p === 'tvet' || p === 'tved') && tEv) {
+      const sp = parseISOParts(tEv.startISO), ep = parseISOParts(tEv.endISO);
+      const date = (document.getElementById('tvsd-' + i) || {}).value || sp.date;
+      if (tEv.type === 'hotel') {
+        const outDate = (document.getElementById('tved-' + i) || {}).value || ep.date;
+        tEv.startISO = date + 'T' + (sp.time || '00:00') + ':00' + sp.tz;
+        tEv.endISO = outDate + 'T' + (ep.time || '00:00') + ':00' + ep.tz;
+      } else {
+        const st = (document.getElementById('tvst-' + i) || {}).value || sp.time;
+        const et = (document.getElementById('tvet-' + i) || {}).value || ep.time;
+        tEv.startISO = date + 'T' + st + ':00' + sp.tz;
+        tEv.endISO = date + 'T' + et + ':00' + ep.tz;
+      }
+    }
+    persistEdits();
+  };
+  resultsEl.addEventListener('input', (e) => applyEdit(e.target));
+  resultsEl.addEventListener('change', (e) => applyEdit(e.target));
+
   // Live updates while extraction runs in the background worker
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'session' || !changes.pluck_state) return;
@@ -547,6 +591,17 @@ function clearPluckState() {
   chrome.storage.session.remove('pluck_state');
 }
 
+// Debounced persistence for inline edits/selections so they survive the popup
+// closing. Exposed at file scope so both the delegated edit listener and the
+// sel-all/desel-all/all-day handlers in renderDetectedCards can reach it.
+let editSaveDebounce = null;
+function persistEdits() {
+  clearTimeout(editSaveDebounce);
+  editSaveDebounce = setTimeout(() => {
+    patchPluckState({ detectedEvents: detectedEvents, travelEvents: travelEvents });
+  }, 300);
+}
+
 // ─── Main extraction ──────────────────────────────────────────────────────────
 async function runExtract() {
   if (!loadedFiles.length) { setStatus('Please add at least one file.', 'error'); return; }
@@ -698,19 +753,20 @@ function gcalUrl(title, startISO, endISO, location, details, allDay) {
   });
 }
 
+function parseISOParts(iso) {
+  if (!iso) return { date: '', time: '', tz: '' };
+  const m = String(iso).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
+  if (!m) return { date: '', time: '', tz: '' };
+  return { date: m[1], time: m[2], tz: m[3] || '' };
+}
+
 // ─── Render: travel cards ─────────────────────────────────────────────────────
 function renderTravelCards(events) {
   if (!events.length) { showResult('<div class="error-box">No travel events found.</div>'); return; }
-  function _parseISO(iso) {
-    if (!iso) return { date: '', time: '', tz: '' };
-    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
-    if (!m) return { date: '', time: '', tz: '' };
-    return { date: m[1], time: m[2], tz: m[3] || '' };
-  }
   function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
   function _buildDateOnlyISO(date, originalISO) {
     // Keep the original time-of-day and tz, only replace the date portion
-    const parts = _parseISO(originalISO);
+    const parts = parseISOParts(originalISO);
     return date + 'T' + (parts.time || '00:00') + ':00' + (parts.tz || '');
   }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
@@ -737,8 +793,8 @@ function renderTravelCards(events) {
     const tagLabel = hotel ? 'Hotel' : (charter ? 'Charter' : 'Flight');
     const passengerCount = ev.passengers && ev.passengers.length ? ev.passengers.length : 0;
     const cardClass = hotel ? 'hotel' : (charter ? 'charter' : 'flight');
-    const sp = _parseISO(s), ep = _parseISO(e2);
-    const notesPrefill = buildTravelDetails(ev);
+    const sp = parseISOParts(s), ep = parseISOParts(e2);
+    const notesPrefill = (ev._editedNotes !== undefined) ? ev._editedNotes : buildTravelDetails(ev);
 
     let editPanelHtml = '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="tvt-' + i + '" value="' + escAttr(ev.title) + '"></div>';
@@ -966,12 +1022,6 @@ function renderDetectedCards() {
   }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
   const fmtT = d => new Date(d).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-  function _parseISO(iso) {
-    if (!iso) return { date: '', time: '', tz: '' };
-    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
-    if (!m) return { date: '', time: '', tz: '' };
-    return { date: m[1], time: m[2], tz: m[3] || '' };
-  }
   function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
   const typeClass = { dinner:'type-dinner', party:'type-party', pickup:'type-pickup', meeting:'type-meeting', grooming:'type-grooming', styling:'type-styling', performance:'type-performance', photo:'type-photo', interview:'type-interview', appointment:'type-appointment', event:'type-event' };
   const typeLabel = { dinner:'Dinner', party:'Party', pickup:'Pickup', meeting:'Meeting', grooming:'Grooming', styling:'Styling', performance:'Performance', photo:'Photo', interview:'Interview', appointment:'Appointment', event:'Event', other:'Other' };
@@ -999,22 +1049,24 @@ function renderDetectedCards() {
   detectedEvents.forEach((ev, i) => {
     let meta = '';
     try { meta = fmtD(ev.startISO) + ' · ' + fmtT(ev.startISO) + '–' + fmtT(ev.endISO); } catch(e) { meta = ev.startISO || ''; }
-    html += '<div class="detected-card selected" id="dc-' + i + '">'
+    const isSel = ev._selected !== false;
+    const isAllDay = ev._allDay === true;
+    html += '<div class="detected-card' + (isSel ? ' selected' : '') + '" id="dc-' + i + '"' + (isAllDay ? ' data-allday="1"' : '') + '>'
       + '<div class="detected-card-header" data-i="' + i + '">'
-      + '<input type="checkbox" class="detect-checkbox" id="ck-' + i + '" checked data-i="' + i + '">'
+      + '<input type="checkbox" class="detect-checkbox" id="ck-' + i + '"' + (isSel ? ' checked' : '') + ' data-i="' + i + '">'
       + '<div style="flex:1;min-width:0;"><div class="detected-title">' + escHtml(ev.title) + '</div>'
       + '<div class="detected-meta">' + escHtml(meta) + '</div></div>'
       + '<span class="event-type-tag ' + (typeClass[ev.type] || 'type-other') + '">' + (typeIcon[ev.type] || '') + (typeLabel[ev.type] || 'Event') + '</span>'
       + '</div>'
-      + '<div class="allday-row"><input type="checkbox" class="allday-cb" id="eallday-' + i + '" data-i="' + i + '">'
+      + '<div class="allday-row"><input type="checkbox" class="allday-cb" id="eallday-' + i + '"' + (isAllDay ? ' checked' : '') + ' data-i="' + i + '">'
       + '<label for="eallday-' + i + '">All-day event</label></div>'
       + '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="et-' + i + '" value="' + escAttr(ev.title) + '"></div>'
-      + (function() { var sp = _parseISO(ev.startISO), ep = _parseISO(ev.endISO);
+      + (function() { var sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
          return '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="esd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
          + '<div class="edit-row-2 edit-times-row"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
          + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'
-         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ep.date) + '"></div>'; })()
+         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ev._endDate || ep.date) + '"></div>'; })()
       + '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="el-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
       + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="en-' + i + '">' + escHtml(ev.notes || '') + '</textarea></div>'
       + '</div></div>';
@@ -1035,16 +1087,18 @@ function renderDetectedCards() {
       const i = hdr.getAttribute('data-i');
       const cb = document.getElementById('ck-' + i);
       cb.checked = !cb.checked;
-      cb.dispatchEvent(new Event('change'));
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
   document.getElementById('sel-all').addEventListener('click', () => {
-    detectedEvents.forEach((_, i) => { document.getElementById('ck-' + i).checked = true; document.getElementById('dc-' + i).classList.add('selected'); });
+    detectedEvents.forEach((ev, i) => { document.getElementById('ck-' + i).checked = true; document.getElementById('dc-' + i).classList.add('selected'); ev._selected = true; });
     updateAddBtn();
+    persistEdits();
   });
   document.getElementById('desel-all').addEventListener('click', () => {
-    detectedEvents.forEach((_, i) => { document.getElementById('ck-' + i).checked = false; document.getElementById('dc-' + i).classList.remove('selected'); });
+    detectedEvents.forEach((ev, i) => { document.getElementById('ck-' + i).checked = false; document.getElementById('dc-' + i).classList.remove('selected'); ev._selected = false; });
     updateAddBtn();
+    persistEdits();
   });
   document.getElementById('retry-btn').addEventListener('click', () => { loadedFiles.length ? runExtract() : runScan(); });
   document.getElementById('add-cal-btn').addEventListener('click', addToCalendar);
@@ -1064,6 +1118,8 @@ function renderDetectedCards() {
             const line = 'Original times: ' + origStart + ' – ' + origEnd;
             if (notesEl && !notesEl.value.includes(line)) {
               notesEl.value = line + (notesEl.value ? '\n\n' + notesEl.value : '');
+              detectedEvents[i].notes = notesEl.value;
+              persistEdits();
             }
             cb.dataset.injected = '1';
           } catch(_) {}

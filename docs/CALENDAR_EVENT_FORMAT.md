@@ -72,15 +72,17 @@ The payload Pluck sends:
   "summary":     "<event title>",
   "location":    "<address, Zoom URL, or venue name>",
   "description": "<the notes block — see formats below>",
-  "start": { "dateTime": "2026-05-12T19:00:00-04:00", "timeZone": "America/New_York" },
-  "end":   { "dateTime": "2026-05-12T21:00:00-04:00", "timeZone": "America/New_York" },
+  "start": { "dateTime": "2026-05-12T19:00:00", "timeZone": "America/New_York" },
+  "end":   { "dateTime": "2026-05-12T21:00:00", "timeZone": "America/New_York" },
   "attachments": [
     { "fileUrl": "https://drive.google.com/open?id=<driveFileId>" }
   ]
 }
 ```
 
-For **cross-zone flights and charters**, `start.timeZone` and `end.timeZone` are different — see §6. This makes Google Calendar show the depart time in the origin city's local zone and the arrive time in the destination city's local zone (the "Use separate start and end time zones" mode in the Calendar UI).
+This example shows a **detected event** — note the `dateTime` has no UTC offset. **Detected events** send wall-clock `dateTime` with **no UTC offset** plus a named `timeZone` — Google resolves the offset, so DST is always correct. **Travel events** still send offset-bearing `dateTime` plus per-end named zones (§6). The URL fallback now appends `&ctz=<zone>` for detected events (see below).
+
+For **cross-zone flights and charters** (travel events only), `start.timeZone` and `end.timeZone` are different — see §6. This makes Google Calendar show the depart time in the origin city's local zone and the arrive time in the destination city's local zone (the "Use separate start and end time zones" mode in the Calendar UI).
 
 For all-day events (currently only available for detected events, via the user's "All-day event" toggle):
 
@@ -105,9 +107,12 @@ https://calendar.google.com/calendar/render?action=TEMPLATE
   &dates={start}/{end}
   &details={notes}
   &location={location}
+  &ctz={zone}
 ```
 
 `{start}` and `{end}` are converted to **UTC** (`YYYYMMDDTHHMMSSZ`) because the URL format requires it. For all-day events, format is `YYYYMMDD/YYYYMMDD` with the same exclusive-end-day rule.
+
+For **detected timed events**, the UTC conversion is computed by converting the wall-clock time in the user's chosen `zone` to UTC (DST-correct), and Pluck appends `&ctz=<zone>` so Google Calendar displays the event in that zone rather than the viewer's default. For **travel events**, the offset already present in `dateTime` is used directly and no `&ctz=` is appended.
 
 ---
 
@@ -284,22 +289,23 @@ This is the most error-prone area. Read carefully.
 
 ### 6.1 Output format
 
-Every `startISO` and `endISO` from Gemini is **ISO 8601 with an explicit numeric offset**, e.g.:
+Gemini's raw `startISO`/`endISO` extraction is **ISO 8601 with an explicit numeric offset** for both event families, e.g.:
 
 ```
 2026-05-12T19:00:00-04:00
 2026-08-14T09:30:00+01:00
 ```
 
-In addition, Pluck now sends a **named IANA timezone** alongside each `dateTime` in the Calendar API payload. This is what makes Google Calendar display each end of the event in its own local zone.
+Gemini also returns a **named IANA timezone** (`timeZone` for detected events; `startTimeZone`/`endTimeZone` for travel events) alongside those offsets. What Pluck does with the offset from there **differs by event family**:
 
-- **Travel events** carry separate `startTimeZone` and `endTimeZone` from Gemini:
+- **Travel events** send the offset-bearing `dateTime` string as-is, paired with separate `startTimeZone`/`endTimeZone`:
   - **Flights** (commercial): `startTimeZone` = origin city zone, `endTimeZone` = destination city zone. A JFK → LAX flight ends up with `America/New_York` on the depart side and `America/Los_Angeles` on the arrive side, so the Calendar UI shows departure in NY local time and arrival in LA local time (the "Use separate start and end time zones" mode).
   - **Charter / private jets**: same as flights. Each leg's start zone = origin FBO's zone, end zone = destination FBO's zone.
   - **Hotels**: both ends in the hotel's local zone (single zone — no split).
-- **Detected events** carry a single `timeZone` from Gemini, applied to both start and end.
+  - See §6.2 for the caveat on how travel events' offsets are chosen.
+- **Detected events** (dinner, meeting, etc.) **discard the offset** before sending to Calendar. Pluck keeps only the wall-clock date and time from `startISO`/`endISO` and sends `dateTime` with **no offset** (e.g. `2026-05-12T19:00:00`), paired with a single `timeZone` applied to both start and end. Google Calendar resolves the actual offset from the named zone, so the result is correct regardless of DST.
 
-The IANA name and the numeric offset must be consistent for the given date — Gemini is instructed to enforce this. If Gemini fails to return a `timeZone` for an event, Pluck falls back to sending only the `dateTime` with offset; Google then displays it in the user's calendar default zone (the old behavior).
+Every detected-event card in the popup shows a **user-visible timezone dropdown** (Date/Time/Time zone edit row on the card). It defaults to whatever zone Gemini inferred (`ev.timeZone`), falling back to Eastern (`America/New_York`) if none was returned. The preset choices are Eastern, Central, Mountain, Pacific, Alaska, Hawaii, and London; if Gemini inferred some other IANA zone (e.g. `Europe/Paris`), that zone appears as an extra pass-through option so it isn't silently discarded. **Whatever zone is selected when the user clicks "Add to Google Calendar" is authoritative** — it, not Gemini's original offset, is what ends up in the `timeZone` field (and, for the signed-out path, in `&ctz=`).
 
 ### 6.2 How the offset is chosen
 
@@ -313,11 +319,13 @@ Gemini infers the offset from the event location. The prompts specify these defa
 | Buenos Aires      | `-03:00`  |
 | Dubai             | `+04:00`  |
 
-> ⚠️ **Important caveat:** the prompts hard-code spring/summer DST offsets. For winter dates (Nov–Mar in the Northern Hemisphere), the offset will be **wrong by one hour** unless Gemini infers it from context. Downstream tools should **not** trust the offset blindly — if you have ground-truth knowledge of the event location, recompute against the actual local timezone.
+> ⚠️ **Important caveat — travel events only:** `flight`/`hotel`/`charter` events' `dateTime` still carries this prompt-inferred, hard-coded spring/summer offset. For winter dates (Nov–Mar in the Northern Hemisphere), the offset will be **wrong by one hour** unless Gemini infers it from context. Downstream tools should **not** trust a travel event's offset blindly — if you have ground-truth knowledge of the event location, recompute against the actual local timezone.
+>
+> **Detected events are not affected by this caveat.** Their `dateTime` carries no offset at all — Google computes the correct offset from the named `timeZone` at calendar-render time, so detected events are DST-safe year-round regardless of what Gemini guessed.
 
 For documents that state a time zone explicitly (e.g. "10:00 AM PT"), Gemini honors the stated zone.
 
-For times stated **without** a time zone (e.g. "Dinner at 7"), Gemini infers the zone from the location address. If no location is present, it falls back to the user's likely zone (typically NY).
+For times stated **without** a time zone (e.g. "Dinner at 7"), Gemini infers the zone from the location address. If no location is present, it falls back to the user's likely zone (typically NY). This inferred zone becomes the dropdown's default (see §6.1) but the user can change it before saving.
 
 ### 6.3 Default durations (when the document gives a start time but no end time)
 
@@ -388,7 +396,7 @@ The `calendarId` going into the API call is the standard Google Calendar ID (oft
 
 1. **Mixed batches** (a PDF + an image in the same upload) all flow through `DETECT_PROMPT`, not `TRAVEL_PROMPT`. The PDF is processed as a generic event document, so flight-specific structure (passenger lists, IATA codes) may not be preserved.
 2. **Quote vs. confirmed booking:** charter quotes set `isQuote: true` and trigger a UI warning. The quote status is **not** written to the calendar event — downstream consumers cannot distinguish a calendared quote from a confirmed booking.
-3. **DST:** the prompt's hard-coded spring/summer offsets are wrong in winter. Trust the time-of-day, treat the offset as best-effort.
+3. **DST (travel events only):** the prompt's hard-coded spring/summer offsets are wrong in winter for `flight`/`hotel`/`charter` events. Trust the time-of-day, treat the offset as best-effort. **Detected events are unaffected** — they send no offset at all, just a wall-clock `dateTime` plus a named `timeZone`, so Google always computes the correct offset (see §6.1–6.2).
 4. **Editable fields:** users can edit title, date, time, location, and notes inline before saving. The downstream calendar event reflects edits, not the raw Gemini output.
 5. **No structured `type` on calendar events:** the rich `type` taxonomy (`dinner`, `pickup`, `grooming`, etc.) only exists in Pluck's UI. To recover it from the calendar event, parse the title or use the calendar name (if the user routes by alias).
 6. **Multi-passenger merge:** flight events from separate PDF confirmations merge by `flightKey` (e.g. `AA1692-2026-03-27`). One calendar event per leg, all passengers in the description.
@@ -427,10 +435,12 @@ POST /calendar/v3/calendars/c_xyz123@group.calendar.google.com/events
   "summary": "Dinner at Soho House",
   "location": "9 9th Ave, New York, NY 10014",
   "description": "Party of 5 total\nReservation under: Jeremy Book\nConfirmation: SH-99812",
-  "start": { "dateTime": "2026-05-14T19:30:00-04:00", "timeZone": "America/New_York" },
-  "end":   { "dateTime": "2026-05-14T21:30:00-04:00", "timeZone": "America/New_York" }
+  "start": { "dateTime": "2026-05-14T19:30:00", "timeZone": "America/New_York" },
+  "end":   { "dateTime": "2026-05-14T21:30:00", "timeZone": "America/New_York" }
 }
 ```
+
+Note the dinner example's `dateTime` has no UTC offset — this is a detected event, so Pluck sends wall-clock time plus the zone chosen in the card's timezone dropdown (Eastern here, since that's the default). Contrast with the flight example above, which keeps its offset because travel events are unaffected by this change.
 
 ---
 

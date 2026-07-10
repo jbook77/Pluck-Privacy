@@ -3,10 +3,10 @@
 This document describes exactly how the **Pluck** Chrome extension creates Google Calendar events, so any downstream tool that reads those events (e.g. a "day sheet" generator) can rely on consistent structure, titles, and notes formatting.
 
 > **Source of truth in code:**
-> - Extraction prompts: [popup.js:14-44](../popup.js#L14-L44)
-> - Travel notes builder: [popup.js:805-818](../popup.js#L805-L818)
-> - URL fallback (no Google sign-in): [popup.js:820-836](../popup.js#L820-L836)
-> - Calendar API event payload: [google-api.js:102-139](../google-api.js#L102-L139)
+> - Extraction prompts (`TRAVEL_PROMPT`, `DETECT_PROMPT`): [extraction.js:8-39](../extraction.js#L8-L39)
+> - Travel notes builder (`buildTravelDetails`): [popup.js:755-768](../popup.js#L755-L768)
+> - URL fallback (no Google sign-in) (`gcalUrl`): [popup.js:770-788](../popup.js#L770-L788)
+> - Calendar API event payload (`createCalendarEvent`): [google-api.js:102-141](../google-api.js#L102-L141)
 
 ---
 

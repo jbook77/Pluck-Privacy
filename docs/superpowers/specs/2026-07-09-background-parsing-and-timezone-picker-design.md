@@ -37,7 +37,7 @@ Keep the popup UI unchanged. Move Gemini extraction into the background service 
 }
 ```
 
-`chrome.storage.session` already has `TRUSTED_AND_UNTRUSTED_CONTEXTS` access (set in background.js) and auto-clears when Chrome fully quits — desired behavior. Quota is 10 MB; if a write fails (huge multi-PDF batch), the popup keeps working exactly as today (in-memory only) and skips persistence — no error shown, graceful degradation.
+`chrome.storage.session` already has `TRUSTED_AND_UNTRUSTED_CONTEXTS` access (set in background.js) and auto-clears when Chrome fully quits — desired behavior. Quota is 10 MB; if the handoff write before extraction fails (huge multi-PDF batch), the popup does not send `RUN_EXTRACT` — sending it would have the background worker read stale or missing files. Instead it resets to idle, re-enables the extract/scan buttons, and shows a plain-English error ("These files are too large to process together. Try fewer or smaller files."). Non-critical writes (inline edit/selection persistence) still fail silently — losing a persisted edit is degraded-but-safe.
 
 ### Extraction moves to background
 

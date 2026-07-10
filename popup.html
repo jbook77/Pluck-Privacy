@@ -277,6 +277,7 @@
     .allday-row label { cursor: pointer; -webkit-user-select: none; user-select: none; }
     .detected-card[data-allday="1"] .edit-times-row { display: none; }
     .detected-card:not([data-allday="1"]) .edit-enddate-row { display: none; }
+    .detected-card[data-allday="1"] .tz-row { display: none; }
 
     /* ── Detect action row ─────────────────────────────────────────────── */
     .detect-actions { display: flex; gap: 8px; margin-top: 10px; }
@@ -478,6 +479,7 @@
       <div id="settings-body"></div>
     </div>
 
+    <script src="extraction.js"></script>
     <script src="google-api.js"></script>
   <script src="popup.js"></script>
 </body>

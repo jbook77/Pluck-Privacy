@@ -7,41 +7,17 @@ let googleAccount  = null;   // { email, name } or null
 let googleCalendars = [];    // [{ id, name, color }]
 let selectedCalendarId = null;
 let autoExtractDebounce = null;
-
-const TODAY = new Date().toISOString().split('T')[0];
-
-// ─── Prompts ──────────────────────────────────────────────────────────────────
-const TRAVEL_PROMPT = 'You are a travel data extractor. Extract all flights, hotel stays, and private/charter flights from the provided document. Return ONLY valid JSON, no markdown, no code fences.\n\nFormat:\n{"events":[{"type":"flight" or "hotel" or "charter","title":"...","startISO":"ISO8601 with tz offset","endISO":"ISO8601 with tz offset","location":"...","flightKey":"...","flightNumber":"...","departureDate":"YYYY-MM-DD","origin":"city","destination":"city","passengers":[...],"baseDetails":"...","isQuote":false}]}\n\n--- COMMERCIAL FLIGHTS (type: "flight") ---\nflightKey: AIRLINECODE+FLIGHTNUMBER+DATE e.g. AA1692-2026-03-27\nflightNumber: e.g. AA1692\nTitle: Fly [ORIGIN] to [DEST] ([2-LETTER AIRLINE CODE] [NUMBER]) — use IATA airline code only, never full airline name. e.g. Fly Newark to Miami (AA 1692)\nbaseDetails (each on its own line, no passengers here):\n[City, State-abbrev-or-2-letter-country-code] ([IATA]) - [City, State-abbrev-or-2-letter-country-code] ([IATA])\ne.g. New York City, NY (JFK) - Buenos Aires, AR (EZE)\n[Depart time]-[Arrive time] local\n[X]hr [Y]min flight\nCabin Class: [CLASS]\npassengers: [{"name":"...","seat":"...","confirmationCode":"..."}]\n\n--- HOTELS (type: "hotel") ---\nTitle: Stay at [HOTEL NAME]\nbaseDetails:\n[Address]\nCheck-In: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nCheck-Out: [DAY], [MONTH] [DATE], [YEAR] at [TIME]\nConfirmation: [NUMBER]\nRoom: [TYPE]\nGuests: [N] Adults\n\n--- PRIVATE / CHARTER JETS (type: "charter") ---\nIdentified by: tail numbers (N-numbers), FBO names, "leg" numbering, charter company names, no scheduled airline code.\nflightKey: "charter-[tailNumber or referenceId]-[originICAO]-[YYYY-MM-DD]" e.g. "charter-N609RC-KMJX-2025-08-18"\nTitle: Private: [Departure City, State] to [Arrival City, State] ([ORIGIN ICAO] → [DEST ICAO])\ne.g. Private: Toms River, NJ to Monticello, NY (KMJX → KMSV)\nlocation: departure FBO full address\nisQuote: true if document is a quote/estimate/unconfirmed, false if confirmed booking\npassengers: ["First Last", ...] (names only — no seats for charter)\nbaseDetails:\n[Aircraft Type] | [Tail Number or "N/A"]\nProvider: [Charter company name] (Ref: [reference/trip number])\n\nDEPARTURE FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nARRIVAL FBO\n[FBO name]\n[FBO address]\n[FBO phone]\n\nPassengers ([N]):\n[numbered list, one per line]\n\nExtract EACH leg as a separate charter event. If no tail number, omit that field.\n\n--- PASSENGER NAME RULES (commercial flights only) ---\nAirline tickets use LASTNAME/GIVEN1 GIVEN2 format. (1) If surname has numeral suffix (II, III, Jr, Sr): use LAST given name, keep suffix: JONAS II/PAUL KEVIN → Kevin Jonas II. (2) Otherwise: use FIRST given name, drop middle names: WEIR/GEORGE CYRIL → George Weir.\n\nTimezones (spring/summer DST): New York=-04:00, LA=-07:00, London=+01:00, Buenos Aires=-03:00, Dubai=+04:00.\nIf nothing found: {"events":[]}';
-
-const DETECT_PROMPT = `You are an event extractor. Today is ${TODAY}. Extract ALL events, appointments, reservations, and meetings from the content. Return ONLY valid JSON, no markdown, no code fences.
-
-Format:
-{"events":[{
-  "type": "dinner | party | pickup | meeting | grooming | styling | performance | photo | interview | appointment | event | other",
-  "title": "concise natural title e.g. Dinner at Soho House or Zoom - Copper Cup x Body Brokers",
-  "startISO": "ISO8601 with tz offset. Infer tz from location (NY spring=-04:00, LA spring=-07:00). If only day-of-week, use next upcoming date from today.",
-  "endISO": "ISO8601. Infer if missing: dinner=2hr, party=3hr, pickup=1hr, meeting=1hr, grooming=45min, styling=1.5hr, performance=2hr, photo=3hr, interview=1hr, appointment=1hr",
-  "location": "full address, Zoom link, or venue name",
-  "notes": "confirmation number, party size, zoom passcode, provider name, guest/invitee list, special notes. One per line.",
-  "confidence": "high | medium | low"
-}]}
-
-Rules:
-- Restaurants: party size in notes. Name +4 = that person PLUS 4 = Party of 5 total
-- Zoom: full join URL as location, ID and passcode in notes
-- Invitations/meetings with guests: list all invitees/attendees in notes (name and email if available), one per line
-- Schedules/itineraries: you MUST extract EVERY single time-stamped item as its own event. A 8-page press schedule should produce 20-30+ events. Do not summarize or combine. Each interview, TV appearance, taping, ceremony, brunch, grooming session, depart/arrive, afterparty = its own event with its own card.
-- Hotel check-in/out = one event
-- Stated time ranges like 1PM-5PM: use exactly
-- If nothing found: {"events":[]}
-- Do NOT invent details
-- GROOMING: haircuts, barber, nails, facials, skincare, spa treatments
-- STYLING: wardrobe fittings, getting dressed, outfit prep, fashion styling sessions
-- PERFORMANCE: concerts, live shows, music performances, sets, soundchecks
-- PHOTO: photo shoots, press photos, campaign shoots, headshots
-- INTERVIEW: magazine interviews, press interviews, podcast guest appearances, Q&As
-- PARTY: after-parties, galas, celebrations, receptions, launch events
-- PICKUP: car service, driver, airport transfer, ride to/from venue`;
+let travelEvents = [];    // merged travel events (restored or from background)
+let currentPhase = 'idle'; // guards storage.onChanged re-render loops
+const TZ_ZONES = [
+  { id: 'America/New_York',    label: 'Eastern'  },
+  { id: 'America/Chicago',     label: 'Central'  },
+  { id: 'America/Denver',      label: 'Mountain' },
+  { id: 'America/Los_Angeles', label: 'Pacific'  },
+  { id: 'America/Anchorage',   label: 'Alaska'   },
+  { id: 'Pacific/Honolulu',    label: 'Hawaii'   },
+  { id: 'Europe/London',       label: 'London'   }
+];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('url-btn').addEventListener('click', fetchUrl);
   document.getElementById('url-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchUrl(); });
-  document.getElementById('change-files-link').addEventListener('click', () => { expandDropZone(); clearResults(); });
+  document.getElementById('change-files-link').addEventListener('click', () => { expandDropZone(); clearResults(); clearPluckState(); });
 
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
@@ -129,7 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       renderFooterSignedOut();
     }
-    // Pick up any files sent from Gmail while popup was closed
+    // Restore any in-flight or finished session, then pick up Gmail files
+    await restorePluckState();
     _pickUpPendingGmailFiles();
   });
 
@@ -137,6 +114,79 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'GMAIL_FILES_READY') {
       _pickUpPendingGmailFiles();
+    }
+  });
+
+  // Persist inline edits so they survive the popup closing
+  const resultsEl = document.getElementById('results');
+  const applyEdit = (target) => {
+    const m = (target.id || '').match(/^(et|esd|est|eet|eed|el|en|etz|eallday|ck|tvt|tvsd|tvst|tvet|tved|tvl|tvn)-(\d+)$/);
+    if (!m) return;
+    const p = m[1], i = +m[2];
+    const dEv = detectedEvents[i], tEv = travelEvents[i];
+    if (p === 'et' && dEv) dEv.title = target.value;
+    else if (p === 'el' && dEv) dEv.location = target.value;
+    else if (p === 'en' && dEv) dEv.notes = target.value;
+    else if (p === 'ck' && dEv) dEv._selected = target.checked;
+    else if (p === 'eallday' && dEv) dEv._allDay = target.checked;
+    else if ((p === 'esd' || p === 'est' || p === 'eet' || p === 'eed') && dEv) {
+      const sp = parseISOParts(dEv.startISO), ep = parseISOParts(dEv.endISO);
+      const date = (document.getElementById('esd-' + i) || {}).value || sp.date;
+      const st = (document.getElementById('est-' + i) || {}).value || sp.time;
+      const et = (document.getElementById('eet-' + i) || {}).value || ep.time;
+      // Explicit end-date edit wins; otherwise same-day events follow the
+      // start date, and originally multi-day events keep their end date.
+      const eedEl = document.getElementById('eed-' + i);
+      const endDate = (eedEl && eedEl.value) ? eedEl.value : (ep.date === sp.date ? date : ep.date);
+      dEv.startISO = date + 'T' + st + ':00' + sp.tz;
+      dEv.endISO = endDate + 'T' + et + ':00' + ep.tz;
+      if (p === 'eed') dEv._endDate = target.value; // all-day end date
+    }
+    else if (p === 'etz' && dEv) dEv.timeZone = target.value;
+    else if (p === 'tvt' && tEv) tEv.title = target.value;
+    else if (p === 'tvl' && tEv) tEv.location = target.value;
+    else if (p === 'tvn' && tEv) tEv._editedNotes = target.value;
+    else if ((p === 'tvsd' || p === 'tvst' || p === 'tvet' || p === 'tved') && tEv) {
+      const sp = parseISOParts(tEv.startISO), ep = parseISOParts(tEv.endISO);
+      const date = (document.getElementById('tvsd-' + i) || {}).value || sp.date;
+      if (tEv.type === 'hotel') {
+        const outDate = (document.getElementById('tved-' + i) || {}).value || ep.date;
+        tEv.startISO = date + 'T' + (sp.time || '00:00') + ':00' + sp.tz;
+        tEv.endISO = outDate + 'T' + (ep.time || '00:00') + ':00' + ep.tz;
+      } else {
+        const st = (document.getElementById('tvst-' + i) || {}).value || sp.time;
+        const et = (document.getElementById('tvet-' + i) || {}).value || ep.time;
+        tEv.startISO = date + 'T' + st + ':00' + sp.tz;
+        tEv.endISO = date + 'T' + et + ':00' + ep.tz;
+      }
+    }
+    persistEdits();
+  };
+  resultsEl.addEventListener('input', (e) => applyEdit(e.target));
+  resultsEl.addEventListener('change', (e) => applyEdit(e.target));
+
+  // Flush pending edit saves before the popup terminates (MV3 popups close
+  // instantly — a debounce timer still counting down would be lost).
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flushPendingEdits();
+  });
+  window.addEventListener('pagehide', flushPendingEdits);
+
+  // Live updates while extraction runs in the background worker
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'session' || !changes.pluck_state) return;
+    const st = changes.pluck_state.newValue;
+    if (!st) { currentPhase = 'idle'; return; }
+    if (st.phase === 'extracting') {
+      currentPhase = 'extracting';
+      setStatus(st.statusText || 'Working...', 'loading');
+      return;
+    }
+    // Only render on the transition out of 'extracting' — edits we save
+    // ourselves also fire this listener and must not re-render.
+    if ((st.phase === 'done' || st.phase === 'error') && currentPhase === 'extracting') {
+      currentPhase = st.phase;
+      renderStoredResults(st);
     }
   });
 });
@@ -410,6 +460,7 @@ function loadFile(file, autoExtract = false) {
       previewSrc: isImage ? dataUrl : null
     };
     loadedFiles.push(entry);
+    patchPluckState({ loadedFiles: loadedFiles });
     renderFileList();
     document.getElementById('extract-btn').disabled = false;
     clearResults();
@@ -447,10 +498,13 @@ function removeFile(idx) {
   loadedFiles.splice(idx, 1);
   renderFileList();
   if (!loadedFiles.length) {
+    clearPluckState();
     document.getElementById('extract-btn').disabled = true;
     document.getElementById('drop-zone').classList.remove('has-files');
     document.getElementById('drop-label').textContent = 'Drop any file — PDF, email, image, or screenshot';
     clearResults();
+  } else {
+    patchPluckState({ loadedFiles: loadedFiles });
   }
 }
 
@@ -493,6 +547,7 @@ function handlePaste(e) {
         e.preventDefault();
         // Treat pasted text as an event-detection input
         loadedFiles.push({ name: 'Pasted text', base64: null, mimeType: 'text/plain', kind: 'text', text: text.trim() });
+        patchPluckState({ loadedFiles: loadedFiles });
         renderFileList();
         document.getElementById('extract-btn').disabled = false;
         clearResults();
@@ -525,6 +580,7 @@ function loadGmailFiles(files) {
     });
   });
   renderFileList();
+  patchPluckState({ loadedFiles: loadedFiles });
   document.getElementById('extract-btn').disabled = false;
   clearResults();
   flashDropZone();
@@ -541,88 +597,86 @@ async function _pickUpPendingGmailFiles() {
   loadGmailFiles(files);
 }
 
+// Returns true if the write succeeded, false otherwise. Most callers (inline
+// edit/selection persistence, etc.) can ignore the return value — losing a
+// persisted edit is degraded-but-safe. runExtract's handoff write is the
+// exception: it must not tell the background service worker to extract when
+// the state it will read back is stale or missing.
+async function patchPluckState(patch) {
+  const r = await new Promise(res => chrome.storage.session.get('pluck_state', res));
+  const state = r.pluck_state || {};
+  Object.assign(state, patch, { updatedAt: Date.now() });
+  return await new Promise(res => {
+    chrome.storage.session.set({ pluck_state: state }, () => {
+      if (chrome.runtime.lastError) {
+        // Accessing lastError also suppresses Chrome's console error for it.
+        void chrome.runtime.lastError;
+        res(false);
+        return;
+      }
+      res(true);
+    });
+  });
+}
+
+function clearPluckState() {
+  currentPhase = 'idle';
+  chrome.storage.session.remove('pluck_state');
+}
+
+// Debounced persistence for inline edits/selections so they survive the popup
+// closing. Exposed at file scope so both the delegated edit listener and the
+// sel-all/desel-all/all-day handlers in renderDetectedCards can reach it.
+let editSaveDebounce = null;
+function persistEdits() {
+  clearTimeout(editSaveDebounce);
+  editSaveDebounce = setTimeout(() => {
+    editSaveDebounce = null;
+    patchPluckState({ detectedEvents: detectedEvents, travelEvents: travelEvents });
+  }, 300);
+}
+
+// MV3 popups terminate instantly on close — flush any pending debounced save
+// immediately so edits made in the last 300ms are not lost. The storage write
+// is handed to the browser process, so it completes even during teardown;
+// fire it without awaiting. No-op when nothing is pending.
+function flushPendingEdits() {
+  if (editSaveDebounce === null) return;
+  clearTimeout(editSaveDebounce);
+  editSaveDebounce = null;
+  patchPluckState({ detectedEvents: detectedEvents, travelEvents: travelEvents });
+}
+
 // ─── Main extraction ──────────────────────────────────────────────────────────
 async function runExtract() {
   if (!loadedFiles.length) { setStatus('Please add at least one file.', 'error'); return; }
-  chrome.storage.local.get('gemini_api_key', async (r) => {
-    const apiKey = r.gemini_api_key;
-    if (!apiKey) { setStatus('Please save your Gemini API key first.', 'error'); return; }
+  if (currentPhase === 'extracting') return; // a run is already in flight
+  // Set synchronously — before any await — so a second call (double-click,
+  // Gmail auto-extract debounce) can't slip past the guard during the gap.
+  currentPhase = 'extracting';
+  const r = await new Promise(res => chrome.storage.local.get('gemini_api_key', res));
+  if (!r.gemini_api_key) { currentPhase = 'idle'; setStatus('Please save your Gemini API key first.', 'error'); return; }
 
-    document.getElementById('extract-btn').disabled = true;
-    clearResults();
-
-    // Split files: travel docs vs images/text (event detection)
-    const travelFiles = loadedFiles.filter(f => f.kind === 'travel');
-    const eventFiles  = loadedFiles.filter(f => f.kind === 'image' || f.kind === 'text' || f.kind === 'event');
-
-    // If we have a mix, or only event files, run event detection
-    // If only travel files, run travel extraction
-    const hasTravelOnly = travelFiles.length > 0 && eventFiles.length === 0;
-
-    let usedFallback = false;
-    const markFallback = () => { usedFallback = true; };
-    try {
-      if (hasTravelOnly) {
-        setStatus('Extracting travel events...', 'loading');
-        const allEvents = [];
-        for (const f of travelFiles) {
-          const fIdx = loadedFiles.indexOf(f);
-          const parsed = await callGemini(apiKey, [
-            { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-            { text: TRAVEL_PROMPT }
-          ], retryStatus, markFallback);
-          const tagged = (parsed.events || []).map(ev => ({ ...ev, sourceFileIdx: fIdx }));
-          allEvents.push(...tagged);
-        }
-        const mismatches = checkMismatches(allEvents);
-        if (mismatches) {
-          let html = '<div class="warn-box"><strong>⚠ PDFs appear to be for different flights</strong>';
-          mismatches.forEach(m => { html += escHtml(m.field) + ': ' + escHtml(m.a) + ' vs ' + escHtml(m.b) + '<br>'; });
-          showResult(html + '</div>');
-        } else {
-          renderTravelCards(mergeFlights(allEvents));
-          tryAutoSelectCalendar(allEvents);
-          collapseDropZone('files');
-        }
-      } else {
-        // Event detection — process each file separately, combine results
-        setStatus('Detecting events...', 'loading');
-        const allEvents = [];
-        for (const f of [...travelFiles, ...eventFiles]) {
-          const fIdx = f.kind !== 'text' ? loadedFiles.indexOf(f) : undefined;
-          let parts;
-          if (f.kind === 'text') {
-            parts = [{ text: DETECT_PROMPT + '\n\nContent:\n' + f.text }];
-          } else if (f.kind === 'image') {
-            parts = [
-              { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-              { text: DETECT_PROMPT + '\n\nExtract all events visible in this image.' }
-            ];
-          } else {
-            parts = [
-              { inline_data: { mime_type: f.mimeType, data: f.base64 } },
-              { text: DETECT_PROMPT }
-            ];
-          }
-          const parsed = await callGemini(apiKey, parts, retryStatus, markFallback);
-          const tagged = (parsed.events || []).map(ev =>
-            fIdx !== undefined ? { ...ev, sourceFileIdx: fIdx } : ev
-          );
-          allEvents.push(...tagged);
-        }
-        detectedEvents = allEvents;
-        await tryAutoSelectCalendar(detectedEvents);
-        renderDetectedCards();
-        collapseDropZone('files');
-      }
-      setStatus('', '');
-      if (usedFallback) showFallbackBanner();
-    } catch(e) {
-      setStatus('', '');
-      showErrorWithRetry(e.message, runExtract);
-    }
-    document.getElementById('extract-btn').disabled = false;
+  document.getElementById('extract-btn').disabled = true;
+  document.getElementById('scan-btn').disabled = true;
+  clearResults();
+  const stateSaved = await patchPluckState({
+    loadedFiles: loadedFiles, phase: 'extracting', statusText: 'Reading your files...',
+    mode: null, travelEvents: null, detectedEvents: null, mismatches: null,
+    usedFallback: false, error: null
   });
+  if (!stateSaved) {
+    // The handoff write failed (e.g. storage quota exceeded on a huge batch) —
+    // sending RUN_EXTRACT now would have the background worker read stale or
+    // missing files. Bail out instead of extracting the wrong thing.
+    currentPhase = 'idle';
+    document.getElementById('extract-btn').disabled = false;
+    document.getElementById('scan-btn').disabled = false;
+    setStatus('These files are too large to process together. Try fewer or smaller files.', 'error');
+    return;
+  }
+  chrome.runtime.sendMessage({ type: 'RUN_EXTRACT' }, () => { void chrome.runtime.lastError; });
+  setStatus('Reading your files...', 'loading');
 }
 
 async function runScan() {
@@ -698,110 +752,38 @@ async function runScan() {
         throw new Error('Could not read this page. Try refreshing the tab, or paste content with Ctrl+V.');
       }
 
-      setStatus('Detecting events...', 'loading');
-      let usedFallback = false;
-      const parsed = await callGemini(apiKey, [
-        { text: DETECT_PROMPT + '\n\nPage: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText }
-      ], retryStatus, () => { usedFallback = true; });
-      detectedEvents = parsed.events || [];
-      await tryAutoSelectCalendar(detectedEvents);
-      setStatus('', '');
-      renderDetectedCards();
-      collapseDropZone('scan');
-      if (usedFallback) showFallbackBanner();
+      // Hand the page text to the shared background extraction flow.
+      // One scan slot: drop any previous scan entry first so re-scanning the
+      // same (or another) page replaces it instead of duplicating events and
+      // Gemini calls. Pasted-text entries are untouched.
+      for (let i = loadedFiles.length - 1; i >= 0; i--) {
+        const f = loadedFiles[i];
+        if (f.kind === 'text' && typeof f.name === 'string' && f.name.startsWith('Scanned: ')) {
+          loadedFiles.splice(i, 1);
+        }
+      }
+      const scanEntry = {
+        name: 'Scanned: ' + (tab.title || 'page').slice(0, 60),
+        base64: null, mimeType: 'text/plain', kind: 'text',
+        text: 'Page: ' + url + '\nTitle: ' + tab.title + '\n\n' + pageText
+      };
+      loadedFiles.push(scanEntry);
+      renderFileList();
+      document.getElementById('extract-btn').disabled = false;
+      await runExtract();
     } catch(e) {
       setStatus('', '');
       showErrorWithRetry(e.message, runScan);
     }
-    document.getElementById('scan-btn').disabled = false;
-  });
-}
-
-// ─── Gemini ───────────────────────────────────────────────────────────────────
-async function callGemini(apiKey, parts, onRetry, onFallback) {
-  const modelChain = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-  const body = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 8192 } });
-  const delays = [1000, 2000, 4000];
-  let lastErrorMsg = '';
-  for (let m = 0; m < modelChain.length; m++) {
-    const model = modelChain[m];
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-    for (let attempt = 0; attempt <= delays.length; attempt++) {
-      let res = null, networkFailed = false;
-      try {
-        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-      } catch(e) {
-        networkFailed = true;
-      }
-      const retryable = networkFailed || (res && (res.status === 503 || res.status === 429 || res.status === 500));
-      if (retryable && attempt < delays.length) {
-        const wait = delays[attempt];
-        if (onRetry) onRetry(attempt + 1, delays.length, wait, model);
-        await new Promise(r => setTimeout(r, wait));
-        continue;
-      }
-      // Retryable but retries exhausted — fall through to next model if available
-      if (retryable && m < modelChain.length - 1) {
-        lastErrorMsg = networkFailed ? 'Network error' : ('Status ' + res.status);
-        break;
-      }
-      if (networkFailed) throw new Error('Network error — check your connection and try again.');
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const msg = (err.error && err.error.message) ? err.error.message : 'Gemini API error ' + res.status;
-        if (res.status === 503) throw new Error('Gemini is overloaded (503), even the backup model. Try again in a moment.');
-        if (res.status === 429) throw new Error('Rate limit hit (429). Wait a minute and try again.');
-        throw new Error(msg);
-      }
-      const data = await res.json();
-      const raw = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(raw);
-      if (m > 0 && onFallback) onFallback(model);
-      return parsed;
+    // Keep the scan button locked while a background extraction is in flight —
+    // renderStoredResults re-enables it when results (or an error) come back.
+    if (currentPhase !== 'extracting') {
+      document.getElementById('scan-btn').disabled = false;
     }
-  }
-  throw new Error('All models unavailable (' + lastErrorMsg + '). Try again in a few minutes.');
+  });
 }
 
 // ─── Travel helpers ───────────────────────────────────────────────────────────
-function checkMismatches(events) {
-  // Group flights by flightKey — only compare flights that claim to be the same leg
-  const groups = {};
-  events.filter(e => e.type === 'flight' && e.flightKey).forEach(ev => {
-    (groups[ev.flightKey] = groups[ev.flightKey] || []).push(ev);
-  });
-  const mismatches = [];
-  Object.values(groups).forEach(group => {
-    if (group.length < 2) return;
-    const ref = group[0];
-    group.slice(1).forEach(ev => {
-      if (ev.departureDate !== ref.departureDate) mismatches.push({ field: 'Date conflict for ' + ref.flightNumber, a: ref.departureDate, b: ev.departureDate });
-    });
-  });
-  return mismatches.length ? mismatches : null;
-}
-
-function mergeFlights(events) {
-  const map = {};
-  const others = [];
-  events.forEach(ev => {
-    if (ev.type === 'flight' && ev.flightKey) {
-      if (map[ev.flightKey]) {
-        (ev.passengers || []).forEach(p => {
-          if (!map[ev.flightKey].passengers.some(x => x.name === p.name && x.seat === p.seat))
-            map[ev.flightKey].passengers.push(p);
-        });
-        if (ev.sourceFileIdx !== undefined && !map[ev.flightKey].sourceFileIdxs.includes(ev.sourceFileIdx))
-          map[ev.flightKey].sourceFileIdxs.push(ev.sourceFileIdx);
-      } else {
-        const idxs = ev.sourceFileIdx !== undefined ? [ev.sourceFileIdx] : [];
-        map[ev.flightKey] = { ...ev, passengers: [...(ev.passengers || [])], sourceFileIdxs: idxs };
-      }
-    } else { others.push(ev); }
-  });
-  return [...Object.values(map), ...others];
-}
-
 function buildTravelDetails(ev) {
   let d = ev.baseDetails || '';
   // Charter events have passengers already formatted inside baseDetails
@@ -817,8 +799,8 @@ function buildTravelDetails(ev) {
   return d.trim();
 }
 
-function gcalUrl(title, startISO, endISO, location, details, allDay) {
-  const fmtDT = d => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+function gcalUrl(title, startISO, endISO, location, details, allDay, tz) {
+  const fmtDT = d => (tz ? wallTimeToUTC(d, tz) : new Date(d)).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   let dates;
   if (allDay) {
     const endPlus = new Date(endISO + 'T00:00:00Z');
@@ -828,26 +810,29 @@ function gcalUrl(title, startISO, endISO, location, details, allDay) {
   } else {
     dates = fmtDT(startISO) + '/' + fmtDT(endISO);
   }
-  return 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
+  const params = {
     action: 'TEMPLATE', text: title,
     dates: dates,
     details: details || '', location: location || ''
-  });
+  };
+  if (tz && !allDay) params.ctz = tz;
+  return 'https://calendar.google.com/calendar/render?' + new URLSearchParams(params);
+}
+
+function parseISOParts(iso) {
+  if (!iso) return { date: '', time: '', tz: '' };
+  const m = String(iso).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
+  if (!m) return { date: '', time: '', tz: '' };
+  return { date: m[1], time: m[2], tz: m[3] || '' };
 }
 
 // ─── Render: travel cards ─────────────────────────────────────────────────────
 function renderTravelCards(events) {
   if (!events.length) { showResult('<div class="error-box">No travel events found.</div>'); return; }
-  function _parseISO(iso) {
-    if (!iso) return { date: '', time: '', tz: '' };
-    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
-    if (!m) return { date: '', time: '', tz: '' };
-    return { date: m[1], time: m[2], tz: m[3] || '' };
-  }
   function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
   function _buildDateOnlyISO(date, originalISO) {
     // Keep the original time-of-day and tz, only replace the date portion
-    const parts = _parseISO(originalISO);
+    const parts = parseISOParts(originalISO);
     return date + 'T' + (parts.time || '00:00') + ':00' + (parts.tz || '');
   }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
@@ -874,8 +859,8 @@ function renderTravelCards(events) {
     const tagLabel = hotel ? 'Hotel' : (charter ? 'Charter' : 'Flight');
     const passengerCount = ev.passengers && ev.passengers.length ? ev.passengers.length : 0;
     const cardClass = hotel ? 'hotel' : (charter ? 'charter' : 'flight');
-    const sp = _parseISO(s), ep = _parseISO(e2);
-    const notesPrefill = buildTravelDetails(ev);
+    const sp = parseISOParts(s), ep = parseISOParts(e2);
+    const notesPrefill = (ev._editedNotes !== undefined) ? ev._editedNotes : buildTravelDetails(ev);
 
     let editPanelHtml = '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="tvt-' + i + '" value="' + escAttr(ev.title) + '"></div>';
@@ -1002,12 +987,13 @@ async function addTravelEventToCalendar(ev) {
     }
   } catch(e) {
     setStatus('', '');
+    console.error('Drive upload failed:', e);
     const btn = document.querySelector('.travel-cal-btn[data-i]');
     if (btn) {
       const wrap = document.createElement('div');
       wrap.className = 'warn-box';
       wrap.style.marginTop = '6px';
-      wrap.innerHTML = 'Upload failed. <button class="text-btn" id="tv-retry">Retry</button> or <button class="text-btn" id="tv-skip">add without attachment</button>';
+      wrap.innerHTML = 'Upload failed (' + escHtml(e.message) + '). <button class="text-btn" id="tv-retry">Retry</button> or <button class="text-btn" id="tv-skip">add without attachment</button>';
       btn.parentNode.insertBefore(wrap, btn.nextSibling);
       document.getElementById('tv-retry').addEventListener('click', () => { wrap.remove(); addTravelEventToCalendar(ev); });
       document.getElementById('tv-skip').addEventListener('click', () => { wrap.remove(); chrome.tabs.create({ url: gcalUrl(ev.title, s, e2, ev.location, details), active: false }); });
@@ -1018,7 +1004,9 @@ async function addTravelEventToCalendar(ev) {
   setStatus('Creating event...', 'loading');
   try {
     const created = await createCalendarEvent(token, selectedCalendarId, {
-      title: ev.title, startISO: s, endISO: e2, location: ev.location || '', notes: details
+      title: ev.title, startISO: s, endISO: e2,
+      startTimeZone: ev.startTimeZone, endTimeZone: ev.endTimeZone,
+      location: ev.location || '', notes: details
     }, fileIds);
     setStatus('', '');
     chrome.tabs.create({ url: created.htmlLink, active: false });
@@ -1026,6 +1014,70 @@ async function addTravelEventToCalendar(ev) {
     setStatus('', '');
     showResult('<div class="error-box">Calendar error: ' + escHtml(e.message) + '</div>');
   }
+}
+
+async function renderStoredResults(st) {
+  setStatus('', '');
+  document.getElementById('extract-btn').disabled = false;
+  const scanBtn = document.getElementById('scan-btn');
+  if (scanBtn) scanBtn.disabled = false;
+  chrome.action.setBadgeText({ text: '' });
+  if (st.phase === 'error') {
+    showErrorWithRetry(st.error || 'Something went wrong. Please try again.', runExtract);
+    return;
+  }
+  if (st.mode === 'travel') {
+    if (st.mismatches) {
+      let html = '<div class="warn-box"><strong>⚠ PDFs appear to be for different flights</strong>';
+      st.mismatches.forEach(m => { html += escHtml(m.field) + ': ' + escHtml(m.a) + ' vs ' + escHtml(m.b) + '<br>'; });
+      showResult(html + '</div>');
+      if (st.usedFallback) showFallbackBanner();
+      return;
+    }
+    travelEvents = st.travelEvents || [];
+    renderTravelCards(travelEvents);
+    tryAutoSelectCalendar(travelEvents);
+    collapseDropZone('files');
+  } else {
+    detectedEvents = st.detectedEvents || [];
+    await tryAutoSelectCalendar(detectedEvents);
+    renderDetectedCards();
+    collapseDropZone('files');
+  }
+  if (st.usedFallback) showFallbackBanner();
+}
+
+async function restorePluckState() {
+  const r = await new Promise(res => chrome.storage.session.get('pluck_state', res));
+  const st = r.pluck_state;
+  if (!st || !st.loadedFiles || !st.loadedFiles.length) return false;
+  loadedFiles = st.loadedFiles;
+  renderFileList();
+  const extractBtn = document.getElementById('extract-btn');
+  const scanBtn = document.getElementById('scan-btn');
+  currentPhase = st.phase || 'idle';
+  if (st.phase === 'extracting') {
+    // Background may have died mid-run (Chrome restarted). If the state is
+    // stale (>10 min), offer retry instead of spinning forever.
+    if (Date.now() - (st.updatedAt || 0) > 10 * 60 * 1000) {
+      // Reset the phase so runExtract's reentrancy guard lets Retry start a fresh run.
+      currentPhase = 'idle';
+      extractBtn.disabled = false;
+      if (scanBtn) scanBtn.disabled = false;
+      showErrorWithRetry('That took too long. Please try again.', runExtract);
+    } else {
+      // Run still in flight — keep both buttons locked so a second run can't
+      // start (renderStoredResults re-enables them when the background finishes).
+      extractBtn.disabled = true;
+      if (scanBtn) scanBtn.disabled = true;
+      setStatus(st.statusText || 'Working...', 'loading');
+    }
+  } else if (st.phase === 'done' || st.phase === 'error') {
+    await renderStoredResults(st); // re-enables both buttons
+  } else {
+    extractBtn.disabled = false;
+  }
+  return true;
 }
 
 // ─── Render: detected event cards ─────────────────────────────────────────────
@@ -1036,12 +1088,6 @@ function renderDetectedCards() {
   }
   const fmtD = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
   const fmtT = d => new Date(d).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-  function _parseISO(iso) {
-    if (!iso) return { date: '', time: '', tz: '' };
-    const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(.*)$/);
-    if (!m) return { date: '', time: '', tz: '' };
-    return { date: m[1], time: m[2], tz: m[3] || '' };
-  }
   function _buildISO(date, time, tz) { return date + 'T' + time + ':00' + tz; }
   const typeClass = { dinner:'type-dinner', party:'type-party', pickup:'type-pickup', meeting:'type-meeting', grooming:'type-grooming', styling:'type-styling', performance:'type-performance', photo:'type-photo', interview:'type-interview', appointment:'type-appointment', event:'type-event' };
   const typeLabel = { dinner:'Dinner', party:'Party', pickup:'Pickup', meeting:'Meeting', grooming:'Grooming', styling:'Styling', performance:'Performance', photo:'Photo', interview:'Interview', appointment:'Appointment', event:'Event', other:'Other' };
@@ -1069,22 +1115,30 @@ function renderDetectedCards() {
   detectedEvents.forEach((ev, i) => {
     let meta = '';
     try { meta = fmtD(ev.startISO) + ' · ' + fmtT(ev.startISO) + '–' + fmtT(ev.endISO); } catch(e) { meta = ev.startISO || ''; }
-    html += '<div class="detected-card selected" id="dc-' + i + '">'
+    const isSel = ev._selected !== false;
+    const isAllDay = ev._allDay === true;
+    html += '<div class="detected-card' + (isSel ? ' selected' : '') + '" id="dc-' + i + '"' + (isAllDay ? ' data-allday="1"' : '') + '>'
       + '<div class="detected-card-header" data-i="' + i + '">'
-      + '<input type="checkbox" class="detect-checkbox" id="ck-' + i + '" checked data-i="' + i + '">'
+      + '<input type="checkbox" class="detect-checkbox" id="ck-' + i + '"' + (isSel ? ' checked' : '') + ' data-i="' + i + '">'
       + '<div style="flex:1;min-width:0;"><div class="detected-title">' + escHtml(ev.title) + '</div>'
       + '<div class="detected-meta">' + escHtml(meta) + '</div></div>'
       + '<span class="event-type-tag ' + (typeClass[ev.type] || 'type-other') + '">' + (typeIcon[ev.type] || '') + (typeLabel[ev.type] || 'Event') + '</span>'
       + '</div>'
-      + '<div class="allday-row"><input type="checkbox" class="allday-cb" id="eallday-' + i + '" data-i="' + i + '">'
+      + '<div class="allday-row"><input type="checkbox" class="allday-cb" id="eallday-' + i + '"' + (isAllDay ? ' checked' : '') + ' data-i="' + i + '">'
       + '<label for="eallday-' + i + '">All-day event</label></div>'
       + '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="et-' + i + '" value="' + escAttr(ev.title) + '"></div>'
-      + (function() { var sp = _parseISO(ev.startISO), ep = _parseISO(ev.endISO);
+      + (function() { var sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
+         var tz = ev.timeZone || 'America/New_York';
+         var opts = TZ_ZONES.map(function(z) { return '<option value="' + z.id + '"' + (z.id === tz ? ' selected' : '') + '>' + z.label + '</option>'; }).join('');
+         if (!TZ_ZONES.some(function(z) { return z.id === tz; })) {
+           opts += '<option value="' + escAttr(tz) + '" selected>' + escHtml(tz.split('/').pop().replace(/_/g, ' ')) + '</option>';
+         }
          return '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="esd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
          + '<div class="edit-row-2 edit-times-row"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
          + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'
-         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ep.date) + '"></div>'; })()
+         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ev._endDate || ep.date) + '"></div>'
+         + '<div class="edit-row tz-row"><div class="edit-label">Time zone</div><select class="edit-input" id="etz-' + i + '">' + opts + '</select></div>'; })()
       + '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="el-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
       + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="en-' + i + '">' + escHtml(ev.notes || '') + '</textarea></div>'
       + '</div></div>';
@@ -1105,16 +1159,18 @@ function renderDetectedCards() {
       const i = hdr.getAttribute('data-i');
       const cb = document.getElementById('ck-' + i);
       cb.checked = !cb.checked;
-      cb.dispatchEvent(new Event('change'));
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
   document.getElementById('sel-all').addEventListener('click', () => {
-    detectedEvents.forEach((_, i) => { document.getElementById('ck-' + i).checked = true; document.getElementById('dc-' + i).classList.add('selected'); });
+    detectedEvents.forEach((ev, i) => { document.getElementById('ck-' + i).checked = true; document.getElementById('dc-' + i).classList.add('selected'); ev._selected = true; });
     updateAddBtn();
+    persistEdits();
   });
   document.getElementById('desel-all').addEventListener('click', () => {
-    detectedEvents.forEach((_, i) => { document.getElementById('ck-' + i).checked = false; document.getElementById('dc-' + i).classList.remove('selected'); });
+    detectedEvents.forEach((ev, i) => { document.getElementById('ck-' + i).checked = false; document.getElementById('dc-' + i).classList.remove('selected'); ev._selected = false; });
     updateAddBtn();
+    persistEdits();
   });
   document.getElementById('retry-btn').addEventListener('click', () => { loadedFiles.length ? runExtract() : runScan(); });
   document.getElementById('add-cal-btn').addEventListener('click', addToCalendar);
@@ -1134,6 +1190,8 @@ function renderDetectedCards() {
             const line = 'Original times: ' + origStart + ' – ' + origEnd;
             if (notesEl && !notesEl.value.includes(line)) {
               notesEl.value = line + (notesEl.value ? '\n\n' + notesEl.value : '');
+              detectedEvents[i].notes = notesEl.value;
+              persistEdits();
             }
             cb.dataset.injected = '1';
           } catch(_) {}
@@ -1205,22 +1263,29 @@ async function addToCalendar() {
       const edEl = document.getElementById('eed-' + i);
       const stEl = document.getElementById('est-' + i);
       const etEl = document.getElementById('eet-' + i);
+      const zone = ((document.getElementById('etz-' + i) || {}).value) || ev.timeZone || 'America/New_York';
       let startISO, endISO;
       if (allDay) {
         startISO = (sdEl && sdEl.value) || ev.startISO.slice(0, 10);
         endISO   = (edEl && edEl.value) || startISO;
       } else {
-        startISO = sdEl && stEl && sdEl.value && stEl.value
-          ? sdEl.value + 'T' + stEl.value + ':00' + (stEl.getAttribute('data-tz') || '')
-          : ev.startISO;
-        endISO   = sdEl && etEl && sdEl.value && etEl.value
-          ? sdEl.value + 'T' + etEl.value + ':00' + (etEl.getAttribute('data-tz') || '')
-          : ev.endISO;
+        // Wall-clock time, no offset — Google interprets it in `zone`
+        const sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
+        const startDate = (sdEl && sdEl.value) || sp.date;
+        // End date: honor the end-date field (covers past-midnight events), but never before the start date —
+        // its prefill can lag a start-date edit (YYYY-MM-DD strings compare chronologically)
+        const endDateRaw = (edEl && edEl.value) || ep.date;
+        const endDate = endDateRaw >= startDate ? endDateRaw : startDate;
+        startISO = startDate + 'T' + ((stEl && stEl.value) || sp.time) + ':00';
+        endISO   = endDate + 'T' + ((etEl && etEl.value) || ep.time) + ':00';
       }
       return {
         title:    document.getElementById('et-' + i).value.trim() || ev.title,
         startISO: startISO,
         endISO:   endISO,
+        startTimeZone: allDay ? undefined : zone,
+        endTimeZone:   allDay ? undefined : zone,
+        timeZone: zone,
         location: document.getElementById('el-' + i).value.trim() || ev.location || '',
         notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
         allDay:   allDay,
@@ -1231,7 +1296,7 @@ async function addToCalendar() {
   // If not signed in — use URL fallback (can't target a specific calendar)
   if (!googleAccount || !selectedCalendarId) {
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
     });
     if (btn) btn.disabled = false;
     return;
@@ -1245,7 +1310,7 @@ async function addToCalendar() {
     showResult('<div class="warn-box"><strong>Google connection lost</strong><br>Please sign out and reconnect Google to use file attachments, or <button class="text-btn" id="fallback-url-btn">add without attachment</button>.</div>');
     document.getElementById('fallback-url-btn').addEventListener('click', () => {
       selectedEvents.forEach(ev => {
-        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
       });
     });
     if (btn) btn.disabled = false;
@@ -1307,7 +1372,7 @@ function showDriveError(selectedEvents, token, message) {
     results.querySelector('.warn-box').remove();
     // Fall back to URL for all selected
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
     });
   });
 }
@@ -1320,10 +1385,6 @@ function showErrorWithRetry(message, retryFn) {
   showResult(html);
   const btn = document.getElementById('err-retry-btn');
   if (btn) btn.addEventListener('click', () => { showResult(''); retryFn(); });
-}
-function retryStatus(attempt, total, waitMs, model) {
-  const label = (model && model.includes('lite')) ? 'Backup model busy' : 'Model busy';
-  setStatus(label + ' — retrying (' + attempt + '/' + total + ') in ' + Math.round(waitMs / 1000) + 's…', 'loading');
 }
 function showFallbackBanner() {
   const results = document.getElementById('results');

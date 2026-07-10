@@ -95,7 +95,7 @@ For all-day events (currently only available for detected events, via the user's
 
 The `end.date` is **always one day after** the user-entered end date, because Google Calendar treats `end.date` as exclusive. Multi-day all-day events follow the same exclusive-end convention.
 
-> **No `timeZone` field is sent.** The timezone is encoded in the `dateTime` string's offset (e.g. `-04:00`). See §6 for how Pluck picks the offset.
+> All-day events carry no `timeZone` and no `dateTime` — only `date` fields. Timed events carry `timeZone` as described above.
 
 ### URL fallback (not signed in)
 

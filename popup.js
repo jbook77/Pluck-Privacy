@@ -597,13 +597,26 @@ async function _pickUpPendingGmailFiles() {
   loadGmailFiles(files);
 }
 
+// Returns true if the write succeeded, false otherwise. Most callers (inline
+// edit/selection persistence, etc.) can ignore the return value — losing a
+// persisted edit is degraded-but-safe. runExtract's handoff write is the
+// exception: it must not tell the background service worker to extract when
+// the state it will read back is stale or missing.
 async function patchPluckState(patch) {
   const r = await new Promise(res => chrome.storage.session.get('pluck_state', res));
   const state = r.pluck_state || {};
   Object.assign(state, patch, { updatedAt: Date.now() });
-  try {
-    await new Promise(res => chrome.storage.session.set({ pluck_state: state }, res));
-  } catch (e) { /* quota exceeded — keep working in memory only */ }
+  return await new Promise(res => {
+    chrome.storage.session.set({ pluck_state: state }, () => {
+      if (chrome.runtime.lastError) {
+        // Accessing lastError also suppresses Chrome's console error for it.
+        void chrome.runtime.lastError;
+        res(false);
+        return;
+      }
+      res(true);
+    });
+  });
 }
 
 function clearPluckState() {
@@ -647,11 +660,21 @@ async function runExtract() {
   document.getElementById('extract-btn').disabled = true;
   document.getElementById('scan-btn').disabled = true;
   clearResults();
-  await patchPluckState({
+  const stateSaved = await patchPluckState({
     loadedFiles: loadedFiles, phase: 'extracting', statusText: 'Reading your files...',
     mode: null, travelEvents: null, detectedEvents: null, mismatches: null,
     usedFallback: false, error: null
   });
+  if (!stateSaved) {
+    // The handoff write failed (e.g. storage quota exceeded on a huge batch) —
+    // sending RUN_EXTRACT now would have the background worker read stale or
+    // missing files. Bail out instead of extracting the wrong thing.
+    currentPhase = 'idle';
+    document.getElementById('extract-btn').disabled = false;
+    document.getElementById('scan-btn').disabled = false;
+    setStatus('These files are too large to process together. Try fewer or smaller files.', 'error');
+    return;
+  }
   chrome.runtime.sendMessage({ type: 'RUN_EXTRACT' }, () => { void chrome.runtime.lastError; });
   setStatus('Reading your files...', 'loading');
 }
@@ -729,7 +752,16 @@ async function runScan() {
         throw new Error('Could not read this page. Try refreshing the tab, or paste content with Ctrl+V.');
       }
 
-      // Hand the page text to the shared background extraction flow
+      // Hand the page text to the shared background extraction flow.
+      // One scan slot: drop any previous scan entry first so re-scanning the
+      // same (or another) page replaces it instead of duplicating events and
+      // Gemini calls. Pasted-text entries are untouched.
+      for (let i = loadedFiles.length - 1; i >= 0; i--) {
+        const f = loadedFiles[i];
+        if (f.kind === 'text' && typeof f.name === 'string' && f.name.startsWith('Scanned: ')) {
+          loadedFiles.splice(i, 1);
+        }
+      }
       const scanEntry = {
         name: 'Scanned: ' + (tab.title || 'page').slice(0, 60),
         base64: null, mimeType: 'text/plain', kind: 'text',
@@ -1239,8 +1271,13 @@ async function addToCalendar() {
       } else {
         // Wall-clock time, no offset — Google interprets it in `zone`
         const sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
-        startISO = ((sdEl && sdEl.value) || sp.date) + 'T' + ((stEl && stEl.value) || sp.time) + ':00';
-        endISO   = ((sdEl && sdEl.value) || ep.date) + 'T' + ((etEl && etEl.value) || ep.time) + ':00';
+        const startDate = (sdEl && sdEl.value) || sp.date;
+        // End date: honor the end-date field (covers past-midnight events), but never before the start date —
+        // its prefill can lag a start-date edit (YYYY-MM-DD strings compare chronologically)
+        const endDateRaw = (edEl && edEl.value) || ep.date;
+        const endDate = endDateRaw >= startDate ? endDateRaw : startDate;
+        startISO = startDate + 'T' + ((stEl && stEl.value) || sp.time) + ':00';
+        endISO   = endDate + 'T' + ((etEl && etEl.value) || ep.time) + ':00';
       }
       return {
         title:    document.getElementById('et-' + i).value.trim() || ev.title,

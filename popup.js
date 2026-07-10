@@ -767,8 +767,8 @@ function buildTravelDetails(ev) {
   return d.trim();
 }
 
-function gcalUrl(title, startISO, endISO, location, details, allDay) {
-  const fmtDT = d => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+function gcalUrl(title, startISO, endISO, location, details, allDay, tz) {
+  const fmtDT = d => (tz ? wallTimeToUTC(d, tz) : new Date(d)).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   let dates;
   if (allDay) {
     const endPlus = new Date(endISO + 'T00:00:00Z');
@@ -778,11 +778,13 @@ function gcalUrl(title, startISO, endISO, location, details, allDay) {
   } else {
     dates = fmtDT(startISO) + '/' + fmtDT(endISO);
   }
-  return 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
+  const params = {
     action: 'TEMPLATE', text: title,
     dates: dates,
     details: details || '', location: location || ''
-  });
+  };
+  if (tz && !allDay) params.ctz = tz;
+  return 'https://calendar.google.com/calendar/render?' + new URLSearchParams(params);
 }
 
 function parseISOParts(iso) {
@@ -1229,24 +1231,24 @@ async function addToCalendar() {
       const edEl = document.getElementById('eed-' + i);
       const stEl = document.getElementById('est-' + i);
       const etEl = document.getElementById('eet-' + i);
+      const zone = ((document.getElementById('etz-' + i) || {}).value) || ev.timeZone || 'America/New_York';
       let startISO, endISO;
       if (allDay) {
         startISO = (sdEl && sdEl.value) || ev.startISO.slice(0, 10);
         endISO   = (edEl && edEl.value) || startISO;
       } else {
-        startISO = sdEl && stEl && sdEl.value && stEl.value
-          ? sdEl.value + 'T' + stEl.value + ':00' + (stEl.getAttribute('data-tz') || '')
-          : ev.startISO;
-        endISO   = sdEl && etEl && sdEl.value && etEl.value
-          ? sdEl.value + 'T' + etEl.value + ':00' + (etEl.getAttribute('data-tz') || '')
-          : ev.endISO;
+        // Wall-clock time, no offset — Google interprets it in `zone`
+        const sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
+        startISO = ((sdEl && sdEl.value) || sp.date) + 'T' + ((stEl && stEl.value) || sp.time) + ':00';
+        endISO   = ((sdEl && sdEl.value) || ep.date) + 'T' + ((etEl && etEl.value) || ep.time) + ':00';
       }
       return {
         title:    document.getElementById('et-' + i).value.trim() || ev.title,
         startISO: startISO,
         endISO:   endISO,
-        startTimeZone: ev.timeZone,
-        endTimeZone:   ev.timeZone,
+        startTimeZone: allDay ? undefined : zone,
+        endTimeZone:   allDay ? undefined : zone,
+        timeZone: zone,
         location: document.getElementById('el-' + i).value.trim() || ev.location || '',
         notes:    document.getElementById('en-' + i).value.trim() || ev.notes || '',
         allDay:   allDay,
@@ -1257,7 +1259,7 @@ async function addToCalendar() {
   // If not signed in — use URL fallback (can't target a specific calendar)
   if (!googleAccount || !selectedCalendarId) {
     selectedEvents.forEach(ev => {
-      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+      chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
     });
     if (btn) btn.disabled = false;
     return;
@@ -1271,7 +1273,7 @@ async function addToCalendar() {
     showResult('<div class="warn-box"><strong>Google connection lost</strong><br>Please sign out and reconnect Google to use file attachments, or <button class="text-btn" id="fallback-url-btn">add without attachment</button>.</div>');
     document.getElementById('fallback-url-btn').addEventListener('click', () => {
       selectedEvents.forEach(ev => {
-        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay), active: false });
+        chrome.tabs.create({ url: gcalUrl(ev.title, ev.startISO, ev.endISO, ev.location, ev.notes, ev.allDay, ev.timeZone), active: false });
       });
     });
     if (btn) btn.disabled = false;

@@ -9,6 +9,15 @@ let selectedCalendarId = null;
 let autoExtractDebounce = null;
 let travelEvents = [];    // merged travel events (restored or from background)
 let currentPhase = 'idle'; // guards storage.onChanged re-render loops
+const TZ_ZONES = [
+  { id: 'America/New_York',    label: 'Eastern'  },
+  { id: 'America/Chicago',     label: 'Central'  },
+  { id: 'America/Denver',      label: 'Mountain' },
+  { id: 'America/Los_Angeles', label: 'Pacific'  },
+  { id: 'America/Anchorage',   label: 'Alaska'   },
+  { id: 'Pacific/Honolulu',    label: 'Hawaii'   },
+  { id: 'Europe/London',       label: 'London'   }
+];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -1086,10 +1095,16 @@ function renderDetectedCards() {
       + '<div class="edit-panel">'
       + '<div class="edit-row"><div class="edit-label">Title</div><input class="edit-input" id="et-' + i + '" value="' + escAttr(ev.title) + '"></div>'
       + (function() { var sp = parseISOParts(ev.startISO), ep = parseISOParts(ev.endISO);
+         var tz = ev.timeZone || 'America/New_York';
+         var opts = TZ_ZONES.map(function(z) { return '<option value="' + z.id + '"' + (z.id === tz ? ' selected' : '') + '>' + z.label + '</option>'; }).join('');
+         if (!TZ_ZONES.some(function(z) { return z.id === tz; })) {
+           opts += '<option value="' + escAttr(tz) + '" selected>' + escHtml(tz.split('/').pop().replace(/_/g, ' ')) + '</option>';
+         }
          return '<div class="edit-row"><div class="edit-label">Date</div><input type="date" class="edit-input" id="esd-' + i + '" value="' + escAttr(sp.date) + '"></div>'
          + '<div class="edit-row-2 edit-times-row"><div><div class="edit-label">Start</div><input type="time" class="edit-input" id="est-' + i + '" value="' + escAttr(sp.time) + '" data-tz="' + escAttr(sp.tz) + '"></div>'
          + '<div><div class="edit-label">End</div><input type="time" class="edit-input" id="eet-' + i + '" value="' + escAttr(ep.time) + '" data-tz="' + escAttr(ep.tz) + '"></div></div>'
-         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ev._endDate || ep.date) + '"></div>'; })()
+         + '<div class="edit-row edit-enddate-row"><div class="edit-label">End date</div><input type="date" class="edit-input" id="eed-' + i + '" value="' + escAttr(ev._endDate || ep.date) + '"></div>'
+         + '<div class="edit-row tz-row"><div class="edit-label">Time zone</div><select class="edit-input" id="etz-' + i + '">' + opts + '</select></div>'; })()
       + '<div class="edit-row"><div class="edit-label">Location</div><input class="edit-input" id="el-' + i + '" value="' + escAttr(ev.location || '') + '"></div>'
       + '<div class="edit-row"><div class="edit-label">Notes</div><textarea class="edit-textarea" id="en-' + i + '">' + escHtml(ev.notes || '') + '</textarea></div>'
       + '</div></div>';

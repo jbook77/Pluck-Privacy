@@ -32,6 +32,7 @@ zip -r "$OUTPUT" \
   popup.js \
   content.js \
   background.js \
+  extraction.js \
   google-api.js \
   icons/icon16.png \
   icons/icon32.png \

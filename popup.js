@@ -553,6 +553,7 @@ async function runExtract() {
   if (!r.gemini_api_key) { setStatus('Please save your Gemini API key first.', 'error'); return; }
 
   document.getElementById('extract-btn').disabled = true;
+  document.getElementById('scan-btn').disabled = true;
   clearResults();
   currentPhase = 'extracting';
   await patchPluckState({
@@ -651,7 +652,11 @@ async function runScan() {
       setStatus('', '');
       showErrorWithRetry(e.message, runScan);
     }
-    document.getElementById('scan-btn').disabled = false;
+    // Keep the scan button locked while a background extraction is in flight —
+    // renderStoredResults re-enables it when results (or an error) come back.
+    if (currentPhase !== 'extracting') {
+      document.getElementById('scan-btn').disabled = false;
+    }
   });
 }
 
@@ -885,9 +890,11 @@ async function addTravelEventToCalendar(ev) {
   }
 }
 
-function renderStoredResults(st) {
+async function renderStoredResults(st) {
   setStatus('', '');
   document.getElementById('extract-btn').disabled = false;
+  const scanBtn = document.getElementById('scan-btn');
+  if (scanBtn) scanBtn.disabled = false;
   chrome.action.setBadgeText({ text: '' });
   if (st.phase === 'error') {
     showErrorWithRetry(st.error || 'Something went wrong. Please try again.', runExtract);
@@ -898,6 +905,7 @@ function renderStoredResults(st) {
       let html = '<div class="warn-box"><strong>⚠ PDFs appear to be for different flights</strong>';
       st.mismatches.forEach(m => { html += escHtml(m.field) + ': ' + escHtml(m.a) + ' vs ' + escHtml(m.b) + '<br>'; });
       showResult(html + '</div>');
+      if (st.usedFallback) showFallbackBanner();
       return;
     }
     travelEvents = st.travelEvents || [];
@@ -906,7 +914,7 @@ function renderStoredResults(st) {
     collapseDropZone('files');
   } else {
     detectedEvents = st.detectedEvents || [];
-    tryAutoSelectCalendar(detectedEvents);
+    await tryAutoSelectCalendar(detectedEvents);
     renderDetectedCards();
     collapseDropZone('files');
   }

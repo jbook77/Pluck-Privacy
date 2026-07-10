@@ -96,7 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       renderFooterSignedOut();
     }
-    // Pick up any files sent from Gmail while popup was closed
+    // Restore any in-flight or finished session, then pick up Gmail files
+    await restorePluckState();
     _pickUpPendingGmailFiles();
   });
 
@@ -919,6 +920,28 @@ async function renderStoredResults(st) {
     collapseDropZone('files');
   }
   if (st.usedFallback) showFallbackBanner();
+}
+
+async function restorePluckState() {
+  const r = await new Promise(res => chrome.storage.session.get('pluck_state', res));
+  const st = r.pluck_state;
+  if (!st || !st.loadedFiles || !st.loadedFiles.length) return false;
+  loadedFiles = st.loadedFiles;
+  renderFileList();
+  document.getElementById('extract-btn').disabled = false;
+  currentPhase = st.phase || 'idle';
+  if (st.phase === 'extracting') {
+    // Background may have died mid-run (Chrome restarted). If the state is
+    // stale (>10 min), offer retry instead of spinning forever.
+    if (Date.now() - (st.updatedAt || 0) > 10 * 60 * 1000) {
+      showErrorWithRetry('That took too long. Please try again.', runExtract);
+    } else {
+      setStatus(st.statusText || 'Working...', 'loading');
+    }
+  } else if (st.phase === 'done' || st.phase === 'error') {
+    await renderStoredResults(st);
+  }
+  return true;
 }
 
 // ─── Render: detected event cards ─────────────────────────────────────────────

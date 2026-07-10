@@ -125,8 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const date = (document.getElementById('esd-' + i) || {}).value || sp.date;
       const st = (document.getElementById('est-' + i) || {}).value || sp.time;
       const et = (document.getElementById('eet-' + i) || {}).value || ep.time;
+      // Explicit end-date edit wins; otherwise same-day events follow the
+      // start date, and originally multi-day events keep their end date.
+      const eedEl = document.getElementById('eed-' + i);
+      const endDate = (eedEl && eedEl.value) ? eedEl.value : (ep.date === sp.date ? date : ep.date);
       dEv.startISO = date + 'T' + st + ':00' + sp.tz;
-      dEv.endISO = date + 'T' + et + ':00' + ep.tz;
+      dEv.endISO = endDate + 'T' + et + ':00' + ep.tz;
       if (p === 'eed') dEv._endDate = target.value; // all-day end date
     }
     else if (p === 'etz' && dEv) dEv.timeZone = target.value;
@@ -151,6 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   resultsEl.addEventListener('input', (e) => applyEdit(e.target));
   resultsEl.addEventListener('change', (e) => applyEdit(e.target));
+
+  // Flush pending edit saves before the popup terminates (MV3 popups close
+  // instantly — a debounce timer still counting down would be lost).
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flushPendingEdits();
+  });
+  window.addEventListener('pagehide', flushPendingEdits);
 
   // Live updates while extraction runs in the background worker
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -598,8 +609,20 @@ let editSaveDebounce = null;
 function persistEdits() {
   clearTimeout(editSaveDebounce);
   editSaveDebounce = setTimeout(() => {
+    editSaveDebounce = null;
     patchPluckState({ detectedEvents: detectedEvents, travelEvents: travelEvents });
   }, 300);
+}
+
+// MV3 popups terminate instantly on close — flush any pending debounced save
+// immediately so edits made in the last 300ms are not lost. The storage write
+// is handed to the browser process, so it completes even during teardown;
+// fire it without awaiting. No-op when nothing is pending.
+function flushPendingEdits() {
+  if (editSaveDebounce === null) return;
+  clearTimeout(editSaveDebounce);
+  editSaveDebounce = null;
+  patchPluckState({ detectedEvents: detectedEvents, travelEvents: travelEvents });
 }
 
 // ─── Main extraction ──────────────────────────────────────────────────────────

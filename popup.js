@@ -550,13 +550,16 @@ function clearPluckState() {
 // ─── Main extraction ──────────────────────────────────────────────────────────
 async function runExtract() {
   if (!loadedFiles.length) { setStatus('Please add at least one file.', 'error'); return; }
+  if (currentPhase === 'extracting') return; // a run is already in flight
+  // Set synchronously — before any await — so a second call (double-click,
+  // Gmail auto-extract debounce) can't slip past the guard during the gap.
+  currentPhase = 'extracting';
   const r = await new Promise(res => chrome.storage.local.get('gemini_api_key', res));
-  if (!r.gemini_api_key) { setStatus('Please save your Gemini API key first.', 'error'); return; }
+  if (!r.gemini_api_key) { currentPhase = 'idle'; setStatus('Please save your Gemini API key first.', 'error'); return; }
 
   document.getElementById('extract-btn').disabled = true;
   document.getElementById('scan-btn').disabled = true;
   clearResults();
-  currentPhase = 'extracting';
   await patchPluckState({
     loadedFiles: loadedFiles, phase: 'extracting', statusText: 'Reading your files...',
     mode: null, travelEvents: null, detectedEvents: null, mismatches: null,
@@ -928,18 +931,29 @@ async function restorePluckState() {
   if (!st || !st.loadedFiles || !st.loadedFiles.length) return false;
   loadedFiles = st.loadedFiles;
   renderFileList();
-  document.getElementById('extract-btn').disabled = false;
+  const extractBtn = document.getElementById('extract-btn');
+  const scanBtn = document.getElementById('scan-btn');
   currentPhase = st.phase || 'idle';
   if (st.phase === 'extracting') {
     // Background may have died mid-run (Chrome restarted). If the state is
     // stale (>10 min), offer retry instead of spinning forever.
     if (Date.now() - (st.updatedAt || 0) > 10 * 60 * 1000) {
+      // Reset the phase so runExtract's reentrancy guard lets Retry start a fresh run.
+      currentPhase = 'idle';
+      extractBtn.disabled = false;
+      if (scanBtn) scanBtn.disabled = false;
       showErrorWithRetry('That took too long. Please try again.', runExtract);
     } else {
+      // Run still in flight — keep both buttons locked so a second run can't
+      // start (renderStoredResults re-enables them when the background finishes).
+      extractBtn.disabled = true;
+      if (scanBtn) scanBtn.disabled = true;
       setStatus(st.statusText || 'Working...', 'loading');
     }
   } else if (st.phase === 'done' || st.phase === 'error') {
-    await renderStoredResults(st);
+    await renderStoredResults(st); // re-enables both buttons
+  } else {
+    extractBtn.disabled = false;
   }
   return true;
 }

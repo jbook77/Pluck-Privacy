@@ -64,8 +64,9 @@ travel-and-events-shortcut/
   - Local PDFs (`file://`): tries content script, falls back to drop-file guidance
 - URL fetch: pastes a PDF link from email, fetches and loads it
 
-### Routing logic (in `runExtract`)
+### Routing logic (in `extractFromFiles`, extraction.js)
 - Files classified as `kind: 'travel'` (PDF/eml) → TRAVEL_PROMPT → flight/hotel cards
+- **Detect fallback:** if a travel-only batch yields zero travel events (e.g. a concert or movie ticket PDF), the same files automatically re-run through DETECT_PROMPT and render as event cards
 - Files classified as `kind: 'image'` or `kind: 'text'` → DETECT_PROMPT → event cards
 - **Mixed uploads** (e.g. a PDF schedule alongside an image) → all run through DETECT_PROMPT
 

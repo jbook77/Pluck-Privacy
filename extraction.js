@@ -140,10 +140,11 @@ async function extractFromFiles(files, apiKey, onStatus, onRetry, onFallback) {
       ], onRetry, onFallback);
       (parsed.events || []).forEach(ev => allEvents.push({ ...ev, sourceFileIdx: fIdx }));
     }
-    return { mode: 'travel', events: allEvents };
-  }
-
-  if (onStatus) onStatus('Detecting events...');
+    if (allEvents.length) return { mode: 'travel', events: allEvents };
+    // Travel-shaped files with no travel in them (e.g. an event ticket PDF) —
+    // fall through and run general event detection on the same files
+    if (onStatus) onStatus('Checking for other kinds of events...');
+  } else if (onStatus) onStatus('Detecting events...');
   for (const f of [...travelFiles, ...eventFiles]) {
     const fIdx = f.kind !== 'text' ? files.indexOf(f) : undefined;
     let parts;

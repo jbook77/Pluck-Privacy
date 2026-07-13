@@ -15,6 +15,7 @@ This document describes exactly how the **Pluck** Chrome extension creates Googl
 1. **User input** — a PDF, `.eml` email, image, screenshot, pasted text, scanned web page, or URL.
 2. **Routing** — Pluck classifies each input as `travel` (PDF/eml) or `event` (image/text/page).
    - Travel-only batch → `TRAVEL_PROMPT` (flights / hotels / charter jets).
+   - Travel-only batch that yields **zero** travel events (e.g. an event-ticket PDF) → automatically re-run through `DETECT_PROMPT`, producing detected-event output (§2.2).
    - Mixed batch or any non-travel input → `DETECT_PROMPT` (everything else).
 3. **AI extraction** — the input plus the prompt are sent to **Gemini 2.5 Flash** (`gemini-2.5-flash`) with `temperature: 0`, `maxOutputTokens: 8192`. If that model is overloaded, Pluck retries with `gemini-2.5-flash-lite` and shows a "results may be less accurate" banner.
 4. **Structured JSON** — Gemini returns `{ events: [...] }`. Pluck parses, merges duplicates (multi-passenger flight PDFs), and renders editable cards in the popup.
